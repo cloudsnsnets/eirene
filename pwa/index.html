@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Eirene</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .logo {
+      font-size: 2.5rem;
+      font-weight: 200;
+      letter-spacing: 0.3em;
+      color: #ffffff;
+      margin-bottom: 0.25rem;
+    }
+
+    .tagline {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      color: #555;
+      text-transform: uppercase;
+      margin-bottom: 3rem;
+    }
+
+    .status-ring {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 2px solid #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
+      transition: all 0.5s ease;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .status-ring.idle      { border-color: #333; }
+    .status-ring.listening { border-color: #4a9eff; box-shadow: 0 0 30px rgba(74,158,255,0.3); animation: pulse 1.5s infinite; }
+    .status-ring.verifying { border-color: #f0a500; box-shadow: 0 0 30px rgba(240,165,0,0.3); }
+    .status-ring.open      { border-color: #2ecc71; box-shadow: 0 0 30px rgba(46,204,113,0.3); }
+    .status-ring.error     { border-color: #e74c3c; box-shadow: 0 0 30px rgba(231,76,60,0.3); }
+    .status-ring.enrolling { border-color: #9b59b6; box-shadow: 0 0 30px rgba(155,89,182,0.3); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.05); }
+    }
+
+    .ring-icon {
+      font-size: 2.5rem;
+      user-select: none;
+    }
+
+    .message {
+      font-size: 1rem;
+      color: #aaa;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      min-height: 1.5rem;
+      max-width: 280px;
+      line-height: 1.5;
+    }
+
+    .message.error   { color: #e74c3c; }
+    .message.success { color: #2ecc71; }
+    .message.warning { color: #f0a500; }
+    .message.enroll  { color: #9b59b6; }
+
+    .noise-level {
+      font-size: 0.7rem;
+      color: #333;
+      letter-spacing: 0.1em;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+    }
+
+    /* Enroll section */
+    .enroll-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .enroll-section.visible {
+      display: flex;
+    }
+
+    .enroll-progress {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .enroll-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #333;
+      transition: background 0.3s;
+    }
+
+    .enroll-dot.done { background: #9b59b6; }
+    .enroll-dot.active { background: #4a9eff; }
+
+    .btn {
+      background: transparent;
+      border: 1px solid #333;
+      color: #666;
+      padding: 0.5rem 1.5rem;
+      border-radius: 2rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn:hover { border-color: #555; color: #aaa; }
+    .btn.enroll-btn { border-color: #9b59b6; color: #9b59b6; }
+    .btn.enroll-btn:hover { background: rgba(155,89,182,0.1); }
+
+    .tunnel-status {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.7rem;
+      color: #333;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #333;
+      transition: background 0.3s;
+    }
+
+    .dot.active { background: #2ecc71; }
+    .dot.noise  { background: #4a9eff; }
+
+    .setup-link {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      color: #222;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .setup-link:hover { color: #555; }
+
+    .footer {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 1.5rem;
+      font-size: 0.6rem;
+      color: #222;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">EIRENE</div>
+  <div class="tagline">Your tunnel. Your voice. Your rules.</div>
+
+  <div class="status-ring idle" id="ring">
+    <span class="ring-icon" id="ring-icon">🎙️</span>
+  </div>
+
+  <div class="message" id="message">Tap to authenticate</div>
+  <div class="noise-level" id="noise-level"></div>
+
+  <!-- Enroll section — hidden until setup mode -->
+  <div class="enroll-section" id="enroll-section">
+    <div class="enroll-progress">
+      <div class="enroll-dot" id="edot-1"></div>
+      <div class="enroll-dot" id="edot-2"></div>
+      <div class="enroll-dot" id="edot-3"></div>
+    </div>
+    <button class="btn enroll-btn" id="enroll-btn" onclick="enrollStep()">
+      Record passphrase
+    </button>
+    <button class="btn" onclick="exitEnroll()">Cancel</button>
+  </div>
+
+  <div class="tunnel-status">
+    <div class="dot" id="tunnel-dot"></div>
+    <span id="tunnel-label">tunnel closed</span>
+    &nbsp;&nbsp;
+    <div class="dot noise" id="noise-dot" style="opacity:0.3"></div>
+    <span>noise</span>
+  </div>
+
+  <a class="setup-link" id="setup-link" onclick="enterEnroll()">setup</a>
+
+  <div class="footer">εἰρήνη</div>
+
+  <script>
+    // ── Config ──────────────────────────────────────────────────────────────
+    const VOICE_AUTH_URL      = '/voice-auth';
+    const NOISE_LEVEL_THRESHOLD = 55;
+    const RECORD_SECONDS      = 3;
+    const ENROLL_STEPS        = 3;
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let token        = null;
+    let recording    = false;
+    let enrollCount  = 0;
+    let enrollMode   = false;
+
+    // ── Elements ─────────────────────────────────────────────────────────────
+    const ring         = document.getElementById('ring');
+    const ringIcon     = document.getElementById('ring-icon');
+    const message      = document.getElementById('message');
+    const noiseEl      = document.getElementById('noise-level');
+    const tunnelDot    = document.getElementById('tunnel-dot');
+    const tunnelLbl    = document.getElementById('tunnel-label');
+    const noiseDot     = document.getElementById('noise-dot');
+    const enrollSect   = document.getElementById('enroll-section');
+    const enrollBtn    = document.getElementById('enroll-btn');
+    const setupLink    = document.getElementById('setup-link');
+
+    // ── Service Worker Registration ──────────────────────────────────────────
+    async function registerWorkers() {
+      if (!('serviceWorker' in navigator)) {
+        setMessage('Service workers not supported.', 'error');
+        return;
+      }
+      try {
+        await navigator.serviceWorker.register('/tunnel-worker.js', { scope: '/' });
+        console.log('tunnel-worker registered');
+      } catch (e) {
+        console.error('SW registration failed:', e);
+      }
+    }
+
+    // ── Noise Check ──────────────────────────────────────────────────────────
+    async function measureNoise() {
+      try {
+        const stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const ctx      = new AudioContext();
+        const source   = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        const db  = Math.round(avg);
+        noiseEl.textContent = `ambient noise: ${db} db`;
+        stream.getTracks().forEach(t => t.stop());
+        await ctx.close();
+        return db;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    // ── Record Audio ─────────────────────────────────────────────────────────
+    async function recordAudio(seconds) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return new Promise((resolve, reject) => {
+        const chunks   = [];
+        const recorder = new MediaRecorder(stream);
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          resolve(new Blob(chunks, { type: recorder.mimeType }));
+        };
+        recorder.onerror = reject;
+        recorder.start();
+        setTimeout(() => recorder.stop(), seconds * 1000);
+      });
+    }
+
+    // ── Enroll Flow ──────────────────────────────────────────────────────────
+    function enterEnroll() {
+      enrollMode  = true;
+      enrollCount = 0;
+      enrollSect.classList.add('visible');
+      setupLink.style.display = 'none';
+      ring.className = 'status-ring idle';
+      ringIcon.textContent = '🎙️';
+      setMessage('Enroll your voice — 3 recordings needed.', 'enroll');
+      updateEnrollDots();
+    }
+
+    function exitEnroll() {
+      enrollMode = false;
+      enrollCount = 0;
+      enrollSect.classList.remove('visible');
+      setupLink.style.display = '';
+      setRing('idle');
+      ringIcon.textContent = '🎙️';
+      setMessage('Tap to authenticate');
+      updateEnrollDots();
+    }
+
+    function updateEnrollDots() {
+      for (let i = 1; i <= 3; i++) {
+        const dot = document.getElementById(`edot-${i}`);
+        if (i <= enrollCount)       dot.className = 'enroll-dot done';
+        else if (i === enrollCount + 1) dot.className = 'enroll-dot active';
+        else                        dot.className = 'enroll-dot';
+      }
+    }
+
+    async function enrollStep() {
+      if (recording) return;
+      recording = true;
+      enrollBtn.disabled = true;
+
+      try {
+        // Noise check
+        setRing('verifying');
+        setMessage('Checking environment…', 'enroll');
+        const db = await measureNoise();
+
+        if (db > NOISE_LEVEL_THRESHOLD) {
+          setRing('error');
+          setMessage('Too loud — find a quieter spot.', 'warning');
+          recording = false;
+          enrollBtn.disabled = false;
+          setTimeout(() => { setRing('idle'); setMessage(`Recording ${enrollCount + 1} of 3 — tap to record.`, 'enroll'); }, 2500);
+          return;
+        }
+
+        // Record
+        setRing('enrolling');
+        setMessage(`Recording ${enrollCount + 1} of 3 — speak now…`, 'enroll');
+        const audioBlob = await recordAudio(RECORD_SECONDS);
+
+        // Send to enroll
+        setRing('verifying');
+        setMessage('Saving voiceprint…', 'enroll');
+
+        const response = await fetch(`${VOICE_AUTH_URL}/enroll`, {
+          method: 'POST',
+          headers: { 'Content-Type': audioBlob.type },
+          body: audioBlob
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'enrolled') {
+          enrollCount++;
+          updateEnrollDots();
+
+          if (enrollCount >= ENROLL_STEPS) {
+            setRing('open');
+            ringIcon.textContent = '✅';
+            setMessage('Enrolled! Restore threshold to 0.75 in .env and restart.', 'success');
+            enrollBtn.style.display = 'none';
+            setTimeout(() => exitEnroll(), 4000);
+          } else {
+            setRing('idle');
+            setMessage(`Good. ${ENROLL_STEPS - enrollCount} more recording${ENROLL_STEPS - enrollCount > 1 ? 's' : ''} needed.`, 'enroll');
+            enrollBtn.disabled = false;
+          }
+        } else {
+          setRing('error');
+          setMessage('Enroll failed. Try again.', 'error');
+          enrollBtn.disabled = false;
+          setTimeout(() => { setRing('idle'); setMessage(`Recording ${enrollCount + 1} of 3 — tap to record.`, 'enroll'); }, 2000);
+        }
+
+      } catch (e) {
+        setRing('error');
+        setMessage('Error. Try again.', 'error');
+        enrollBtn.disabled = false;
+        console.error(e);
+      }
+
+      recording = false;
+    }
+
+    // ── Auth Flow ─────────────────────────────────────────────────────────────
+    async function authenticate() {
+      if (recording || enrollMode) return;
+      recording = true;
+
+      try {
+        setRing('verifying');
+        setMessage('Checking environment…');
+        const db = await measureNoise();
+
+        if (db > NOISE_LEVEL_THRESHOLD) {
+          setRing('error');
+          setMessage('Environment too loud — find a quieter spot.', 'warning');
+          recording = false;
+          setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); }, 3000);
+          return;
+        }
+
+        setRing('listening');
+        setMessage('Speak your passphrase…');
+        const audioBlob = await recordAudio(RECORD_SECONDS);
+
+        setRing('verifying');
+        setMessage('Verifying…');
+
+        const response = await fetch(`${VOICE_AUTH_URL}/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': audioBlob.type },
+          body: audioBlob
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'verified') {
+          token = data.token;
+
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'SET_TOKEN',
+              token: token
+            });
+          }
+
+          setRing('open');
+          setMessage('Tunnel open.', 'success');
+          ringIcon.textContent = '🔓';
+          setTunnelStatus(true);
+
+        } else if (data.status === 'not_recognised') {
+          setRing('error');
+          setMessage('Not recognised. Try again.', 'error');
+          setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
+
+        } else {
+          setRing('error');
+          setMessage('Auth error. Try again.', 'error');
+          setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
+        }
+
+      } catch (e) {
+        setRing('error');
+        setMessage('Something went wrong.', 'error');
+        console.error(e);
+        setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
+      }
+
+      recording = false;
+    }
+
+    // ── UI Helpers ───────────────────────────────────────────────────────────
+    function setRing(state) { ring.className = `status-ring ${state}`; }
+    function setMessage(text, type = '') {
+      message.textContent = text;
+      message.className   = `message ${type}`;
+    }
+    function setTunnelStatus(open) {
+      tunnelDot.className   = open ? 'dot active' : 'dot';
+      tunnelLbl.textContent = open ? 'tunnel open' : 'tunnel closed';
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    ring.addEventListener('click', authenticate);
+    // Start noise worker
+    const noiseWorker = new Worker("/noise-worker.js");
+    noiseWorker.onerror = e => console.error("[noise-worker] Error:", e);
+    console.log("[noise-worker] Started.");
+
+    registerWorkers().then(() => { noiseDot.style.opacity = "1"; });
+
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data.type === 'TUNNEL_URL_UPDATED') {
+        console.log('Tunnel URL updated:', event.data.url);
+      }
+    });
+  </script>
+</body>
+</html>

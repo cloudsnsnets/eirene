@@ -1,0 +1,122 @@
+name: eirene
+
+# ── Eirene Stack ──────────────────────────────────────────────────────────────
+#
+# Services talk to each other by name on eirene-net:
+#   eirene-voice-auth:8081
+#   eirene-proxy:8080
+#   eirene-pwa:8082
+#
+# External ports (host):
+#   8081 → voice-auth (for testing only — will be internal in production)
+#   3773 → proxy HTTP/CONNECT (host port avoids conflict with Eliza on 8080)
+#   1081 → proxy SOCKS5 (host port avoids conflict with system 1080)
+#   8082 → PWA (served to browser/phone)
+#
+# JWT_SECRET must match across proxy and voice-auth.
+# Change this to a strong random secret in production.
+#
+# Cloud SNS Pty Ltd
+
+services:
+
+  voice-auth:
+    build:
+      context: ./voice-auth
+    image: eirene-voice-auth:latest
+    container_name: eirene-voice-auth
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    volumes:
+      - voiceprints:/data/voiceprints
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_SOFT_EXPIRY=14400
+      - JWT_HARD_EXPIRY=28800
+      - SIMILARITY_THRESHOLD=${SIMILARITY_THRESHOLD:-0.75}
+    networks:
+      - eirene-net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  proxy:
+    build:
+      context: ./proxy
+    image: eirene-proxy:latest
+    container_name: eirene-proxy
+    restart: unless-stopped
+    ports:
+      - "3773:8080"
+      - "1081:1080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - PROXY_PORT=8080
+      - SOCKS_PORT=1080
+    depends_on:
+      voice-auth:
+        condition: service_healthy
+    networks:
+      - eirene-net
+
+  pwa:
+    build:
+      context: ./pwa
+    image: eirene-pwa:latest
+    container_name: eirene-pwa
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      - voice-auth
+      - proxy
+    networks:
+      - eirene-net
+
+  tunnel-hopper:
+    build:
+      context: ./tunnel-hopper
+    image: eirene-tunnel-hopper:latest
+    container_name: eirene-tunnel-hopper
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN:-not-set}
+      - CF_ZONE_ID=${CF_ZONE_ID:-not-set}
+      - CF_TUNNEL_ID=${CF_TUNNEL_ID:-a5753c6d-bc51-4e33-93ac-fd0bf28d93e3}
+      - DOMAIN=${DOMAIN:-eirene.elizahome.com}
+      - PROXY_SERVICE=http://eirene-proxy:8080
+      - HOP_MIN_SECONDS=1200
+      - HOP_MAX_SECONDS=5400
+      - OVERLAP_SECONDS=15
+    depends_on:
+      - pwa
+      - proxy
+    networks:
+      - eirene-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: eirene-cloudflared
+    restart: unless-stopped
+    command: tunnel run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - pwa
+    networks:
+      - eirene-net
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  voiceprints:
+    name: eirene_voiceprints
+    external: true   # Volume exists outside compose — persists across compose down/up
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  eirene-net:
+    driver: bridge
+    name: eirene-net
