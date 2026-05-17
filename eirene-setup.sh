@@ -38,19 +38,18 @@ fi
 echo -e "${GREEN}✓ Docker $(docker --version | cut -d' ' -f3 | tr -d ',')${NC}"
 echo -e "${GREEN}✓ Docker Compose $(docker compose version --short)${NC}"
 
-# ── 2. Cloudflare API token ───────────────────────────────────────────────────
+# ── 2. Cloudflare setup ───────────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}[2/5] Cloudflare setup...${NC}"
 echo ""
 echo "  You need a Cloudflare account with a domain."
 echo "  If you don't have one:"
 echo "    1. Sign up free at https://cloudflare.com"
-echo "    2. Register a domain at https://dash.cloudflare.com → Domains → Buy domain"
-echo "       (~\$10/year — the only cost for Eirene)"
+echo "    2. Register a domain: Domains → Buy domain (~\$10/year)"
 echo ""
 echo "  Then create an API token:"
 echo "    1. https://dash.cloudflare.com/profile/api-tokens"
-echo "    2. Create Token → Use 'Edit zone DNS' template"
+echo "    2. Create Token → use 'Edit zone DNS' template"
 echo "    3. Add permission: Account → Cloudflare Tunnel → Edit"
 echo "    4. Create Token → copy it"
 echo ""
@@ -63,7 +62,6 @@ if [ -z "$CF_API_TOKEN" ]; then
 fi
 
 # Verify token
-echo -e "  Verifying token..."
 VERIFY=$(curl -s "https://api.cloudflare.com/client/v4/user/tokens/verify" \
     -H "Authorization: Bearer $CF_API_TOKEN")
 if ! echo "$VERIFY" | grep -q '"active"'; then
@@ -72,28 +70,23 @@ if ! echo "$VERIFY" | grep -q '"active"'; then
 fi
 echo -e "${GREEN}✓ Token verified${NC}"
 
-# Get account ID
-ACCOUNT_ID=$(curl -s "https://api.cloudflare.com/client/v4/accounts" \
-    -H "Authorization: Bearer $CF_API_TOKEN" | \
-    python3 -c "import sys,json; print(json.load(sys.stdin)['result'][0]['id'])")
-
-if [ -z "$ACCOUNT_ID" ]; then
-    echo -e "${RED}✗ Could not get account ID. Check token permissions.${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ Account ID: ${ACCOUNT_ID:0:8}...${NC}"
-
-# Get zone
+# Get domain
 read -p "  Your domain (e.g. eirenedesign.uk): " DOMAIN
 echo ""
 
-ZONE_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" \
-    -H "Authorization: Bearer $CF_API_TOKEN" | \
-    python3 -c "import sys,json; r=json.load(sys.stdin)['result']; print(r[0]['id'] if r else '')")
+# Get zone ID and account ID from domain — one API call
+ZONE_RESP=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" \
+    -H "Authorization: Bearer $CF_API_TOKEN")
 
-if [ -z "$ZONE_ID" ]; then
+ZONE_ID=$(echo "$ZONE_RESP" | python3 -c \
+    "import sys,json; r=json.load(sys.stdin)['result']; print(r[0]['id'] if r else '')" 2>/dev/null)
+
+ACCOUNT_ID=$(echo "$ZONE_RESP" | python3 -c \
+    "import sys,json; r=json.load(sys.stdin)['result']; print(r[0]['account']['id'] if r else '')" 2>/dev/null)
+
+if [ -z "$ZONE_ID" ] || [ -z "$ACCOUNT_ID" ]; then
     echo -e "${RED}✗ Domain '$DOMAIN' not found in your Cloudflare account.${NC}"
-    echo "  Make sure the domain is registered/transferred to Cloudflare."
+    echo "  Make sure the domain is registered at Cloudflare."
     exit 1
 fi
 echo -e "${GREEN}✓ Domain verified: $DOMAIN${NC}"
@@ -113,24 +106,25 @@ TUNNEL_ID=$(echo "$TUNNEL_RESP" | python3 -c \
     "import sys,json; print(json.load(sys.stdin)['result']['id'])" 2>/dev/null)
 
 if [ -z "$TUNNEL_ID" ]; then
-    # Tunnel might already exist — try to find it
+    # Tunnel may already exist — find it
     TUNNEL_ID=$(curl -s \
-        "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel?name=eirene-home" \
+        "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel?name=eirene-home&is_deleted=false" \
         -H "Authorization: Bearer $CF_API_TOKEN" | \
-        python3 -c "import sys,json; r=json.load(sys.stdin)['result']; print(r[0]['id'] if r else '')")
+        python3 -c "import sys,json; r=json.load(sys.stdin)['result']; print(r[0]['id'] if r else '')" 2>/dev/null)
 fi
 
 if [ -z "$TUNNEL_ID" ]; then
-    echo -e "${RED}✗ Could not create tunnel. Check token has Cloudflare Tunnel:Edit permission.${NC}"
+    echo -e "${RED}✗ Could not create tunnel.${NC}"
+    echo "  Check token has: Account → Cloudflare Tunnel → Edit permission."
     exit 1
 fi
-echo -e "${GREEN}✓ Tunnel created: ${TUNNEL_ID:0:8}...${NC}"
+echo -e "${GREEN}✓ Tunnel created${NC}"
 
 # Get tunnel token
 TUNNEL_TOKEN=$(curl -s \
     "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/token" \
     -H "Authorization: Bearer $CF_API_TOKEN" | \
-    python3 -c "import sys,json; print(json.load(sys.stdin)['result'])")
+    python3 -c "import sys,json; print(json.load(sys.stdin)['result'])" 2>/dev/null)
 
 if [ -z "$TUNNEL_TOKEN" ]; then
     echo -e "${RED}✗ Could not get tunnel token.${NC}"
@@ -138,40 +132,37 @@ if [ -z "$TUNNEL_TOKEN" ]; then
 fi
 echo -e "${GREEN}✓ Tunnel token obtained${NC}"
 
-# Create DNS records automatically
+# Create DNS records
 TUNNEL_CNAME="${TUNNEL_ID}.cfargotunnel.com"
-
 echo -e "  Creating DNS records..."
 
-# PWA record
 curl -s -X POST \
     "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
     -H "Authorization: Bearer $CF_API_TOKEN" \
     -H "Content-Type: application/json" \
     --data "{\"type\":\"CNAME\",\"name\":\"$DOMAIN\",\"content\":\"$TUNNEL_CNAME\",\"ttl\":1,\"proxied\":false}" \
-    > /dev/null
+    > /dev/null 2>&1 || true
 
-# Proxy record
 curl -s -X POST \
     "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
     -H "Authorization: Bearer $CF_API_TOKEN" \
     -H "Content-Type: application/json" \
     --data "{\"type\":\"CNAME\",\"name\":\"proxy.$DOMAIN\",\"content\":\"$TUNNEL_CNAME\",\"ttl\":1,\"proxied\":false}" \
-    > /dev/null
+    > /dev/null 2>&1 || true
 
 echo -e "${GREEN}✓ DNS records created${NC}"
-echo -e "${GREEN}✓ $DOMAIN → tunnel${NC}"
-echo -e "${GREEN}✓ proxy.$DOMAIN → tunnel${NC}"
 
-# Configure tunnel ingress
+# Configure tunnel ingress routes
 curl -s -X PUT \
     "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/configurations" \
     -H "Authorization: Bearer $CF_API_TOKEN" \
     -H "Content-Type: application/json" \
     --data "{\"config\":{\"ingress\":[{\"hostname\":\"$DOMAIN\",\"service\":\"http://eirene-pwa:8082\"},{\"hostname\":\"proxy.$DOMAIN\",\"service\":\"http://eirene-proxy:8080\"},{\"service\":\"http_status:404\"}]}}" \
-    > /dev/null
+    > /dev/null 2>&1
 
 echo -e "${GREEN}✓ Tunnel routes configured${NC}"
+echo -e "${GREEN}✓ $DOMAIN → PWA${NC}"
+echo -e "${GREEN}✓ proxy.$DOMAIN → proxy${NC}"
 
 # ── 4. Configure environment ──────────────────────────────────────────────────
 echo ""
@@ -179,7 +170,6 @@ echo -e "${CYAN}[4/5] Configuring Eirene...${NC}"
 
 cp .env.example .env
 
-# Generate JWT secret
 SECRET=$(openssl rand -hex 32)
 sed -i "s|JWT_SECRET=.*|JWT_SECRET=$SECRET|" .env
 sed -i "s|CLOUDFLARE_TUNNEL_TOKEN=.*|CLOUDFLARE_TUNNEL_TOKEN=$TUNNEL_TOKEN|" .env
@@ -204,7 +194,7 @@ until docker exec eirene-voice-auth \
     2>/dev/null; do
     sleep 3
     ATTEMPTS=$((ATTEMPTS + 1))
-    if [ $ATTEMPTS -gt 20 ]; then
+    if [ $ATTEMPTS -gt 30 ]; then
         echo -e "${RED}✗ Voice auth failed to start.${NC}"
         echo "  Check: docker logs eirene-voice-auth"
         exit 1
