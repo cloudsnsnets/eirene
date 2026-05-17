@@ -113,7 +113,6 @@ services:
 volumes:
   voiceprints:
     name: eirene_voiceprints
-    external: true   # Volume exists outside compose — persists across compose down/up
 
 # ── Networks ──────────────────────────────────────────────────────────────────
 networks:
