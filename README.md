@@ -33,17 +33,21 @@ Eirene protects you from employer network monitoring and commercial data harvest
 
 ## Requirements
 
-- A machine that can run Docker 24/7:
-  - Raspberry Pi 4 (4GB+) or Pi 5 — recommended (~$150–300 AUD)
-  - Any spare laptop or NUC — works fine
-  - Any PC that can stay on — works fine
-- Home internet connection
-- Free Cloudflare account
-- A domain name
+**A machine to be your home server:**
+- Raspberry Pi 4 (4GB+) or Pi 5 — recommended (~$150–300 AUD)
+- Any spare laptop, NUC, or PC that can stay on
+- Must be able to run Docker
+
+**A Cloudflare account with a domain:**
+- Free Cloudflare account at cloudflare.com
+- A domain registered at Cloudflare Registrar (~$10 AUD/year)
+- This is the only cost — less than one month of any VPN service
+
+**That's it.** The setup wizard handles everything else automatically.
 
 ---
 
-## Setup (~10 minutes)
+## Setup (~15 minutes)
 
 ### 1. Install Docker
 
@@ -54,10 +58,23 @@ sudo usermod -aG docker $USER
 # Log out and back in
 ```
 
-**Windows (WSL2):**  
+**Windows (WSL2):**
 Install Docker Desktop from https://docs.docker.com/desktop/windows/
 
-### 2. Clone and run the setup wizard
+### 2. Create a Cloudflare account and domain
+
+1. Sign up free at **https://cloudflare.com**
+2. Go to **Domains → Buy domain** — search for something simple (~$10/year)
+3. Purchase the domain — standard checkout, no hidden fees
+
+### 3. Create a Cloudflare API token
+
+1. Go to **https://dash.cloudflare.com/profile/api-tokens**
+2. Click **Create Token** → use **"Edit zone DNS"** template
+3. Add one more permission: **Account → Cloudflare Tunnel → Edit**
+4. Click **Create Token** → copy it immediately
+
+### 4. Clone and run the setup wizard
 
 ```bash
 git clone https://github.com/cloudsnsnets/eirene
@@ -66,17 +83,21 @@ cd eirene
 ```
 
 The wizard will:
-- Authenticate with GitHub Container Registry to pull backend images
+- Verify your Cloudflare API token
+- Create your tunnel automatically
+- Set up DNS records automatically
+- Configure tunnel routes automatically
 - Generate a secure JWT secret
-- Ask for your Cloudflare tunnel token
-- Configure your domains
+- Pull all Docker images
 - Start all services
-- Guide you through voice enrollment on your phone
 
-### 3. Open on your phone
+**No manual Cloudflare dashboard steps required.**
 
-Visit your Eirene URL on your phone browser.  
-Tap `setup` at the bottom to enroll your voice (3 recordings).  
+### 5. Enroll your voice
+
+Visit your domain on your phone browser.  
+Tap **setup** at the bottom of the screen.  
+Record your passphrase 3 times.  
 Then tap the microphone to authenticate.  
 Add to home screen.
 
@@ -93,9 +114,9 @@ Cloudflare Tunnel (HTTPS, your domain, path-hopping)
     ↓
 Your home box
     ├── Voice Auth  — WeSpeaker ONNX, local, no cloud
-    ├── Proxy       — PHI stripping, JWT validation, /fetch endpoint
+    ├── Proxy       — PHI stripping, JWT validation
     ├── PWA server  — Nginx serving the open source frontend
-    └── Tunnel Hopper — Cloudflare path rotation via API
+    └── Tunnel Hopper — path rotation via Cloudflare API
     ↓
 The real internet
 ```
@@ -122,7 +143,7 @@ The backend services (proxy, voice auth, tunnel hopper) are proprietary Cloud SN
 ## Threat model
 
 **Protected against:**
-- Employer and site network monitoring (traffic analysis, content inspection)
+- Employer and site network monitoring
 - ISP logging at the remote site
 - Ad network tracking and behavioural profiling
 - Traffic correlation (noise engine + path hopping)
@@ -131,8 +152,8 @@ The backend services (proxy, voice auth, tunnel hopper) are proprietary Cloud SN
 **Not protected against:**
 - Your home ISP (they see you connecting to Cloudflare)
 - Physical device seizure
-- Nation-state actors with broad network access
-- Voice cloning attacks (mitigated by passphrase secrecy)
+- Nation-state actors
+- Voice cloning (mitigated by passphrase secrecy)
 
 ---
 
@@ -146,7 +167,7 @@ Runs forever. Serves one person perfectly.
 
 ## Licence
 
-Frontend code (tunnel-worker.js, noise-worker.js, index.html, nginx.conf, eirene-setup.sh) is licensed under GPL-3.0.  
+Frontend code is licensed under GPL-3.0.  
 Backend Docker images are proprietary — © Cloud SNS Pty Ltd.
 
 ---
