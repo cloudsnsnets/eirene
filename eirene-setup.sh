@@ -129,14 +129,14 @@ curl -s -X POST \
     "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
     -H "Authorization: Bearer $CF_API_TOKEN" \
     -H "Content-Type: application/json" \
-    --data "{\"type\":\"CNAME\",\"name\":\"$DOMAIN\",\"content\":\"$TUNNEL_CNAME\",\"ttl\":1,\"proxied\":false}" \
+    --data "{\"type\":\"CNAME\",\"name\":\"$DOMAIN\",\"content\":\"$TUNNEL_CNAME\",\"ttl\":1,\"proxied\":true}" \
     > /dev/null 2>&1 || true
 
 curl -s -X POST \
     "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
     -H "Authorization: Bearer $CF_API_TOKEN" \
     -H "Content-Type: application/json" \
-    --data "{\"type\":\"CNAME\",\"name\":\"proxy.$DOMAIN\",\"content\":\"$TUNNEL_CNAME\",\"ttl\":1,\"proxied\":false}" \
+    --data "{\"type\":\"CNAME\",\"name\":\"proxy.$DOMAIN\",\"content\":\"$TUNNEL_CNAME\",\"ttl\":1,\"proxied\":true}" \
     > /dev/null 2>&1 || true
 
 echo -e "${GREEN}✓ DNS records created${NC}"
