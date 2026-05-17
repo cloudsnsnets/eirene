@@ -23,7 +23,7 @@ services:
   voice-auth:
     build:
       context: ./voice-auth
-    image: eirene-voice-auth:latest
+    image: ghcr.io/cloudsnsnets/eirene-voice-auth:latest
     container_name: eirene-voice-auth
     restart: unless-stopped
     ports:
@@ -46,7 +46,7 @@ services:
   proxy:
     build:
       context: ./proxy
-    image: eirene-proxy:latest
+    image: ghcr.io/cloudsnsnets/eirene-proxy:latest
     container_name: eirene-proxy
     restart: unless-stopped
     ports:
@@ -65,7 +65,7 @@ services:
   pwa:
     build:
       context: ./pwa
-    image: eirene-pwa:latest
+    image: ghcr.io/cloudsnsnets/eirene-pwa:latest
     container_name: eirene-pwa
     restart: unless-stopped
     ports:
@@ -79,7 +79,7 @@ services:
   tunnel-hopper:
     build:
       context: ./tunnel-hopper
-    image: eirene-tunnel-hopper:latest
+    image: ghcr.io/cloudsnsnets/eirene-tunnel-hopper:latest
     container_name: eirene-tunnel-hopper
     restart: unless-stopped
     ports:
