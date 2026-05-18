@@ -5,185 +5,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0a0a0a">
   <title>Eirene</title>
+
+  <!-- WebRTC Killer -- runs before anything else -->
+  <script>
+    (function() {
+      'use strict';
+      const BLOCKED = function() {
+        throw new DOMException('WebRTC is disabled by Eirene.', 'NotSupportedError');
+      };
+      window.RTCPeerConnection         = BLOCKED;
+      window.RTCSessionDescription     = BLOCKED;
+      window.RTCIceCandidate           = BLOCKED;
+      window.RTCDataChannel            = BLOCKED;
+      window.RTCRtpSender              = BLOCKED;
+      window.RTCRtpReceiver            = BLOCKED;
+      window.RTCRtpTransceiver         = BLOCKED;
+      window.RTCDtlsTransport          = BLOCKED;
+      window.RTCIceTransport           = BLOCKED;
+      window.RTCSctpTransport          = BLOCKED;
+      window.RTCStatsReport            = BLOCKED;
+      window.webkitRTCPeerConnection   = BLOCKED;
+      window.mozRTCPeerConnection      = BLOCKED;
+      window.msRTCPeerConnection       = BLOCKED;
+      window.webkitRTCSessionDescription = BLOCKED;
+      window.mozRTCSessionDescription    = BLOCKED;
+      window.webkitRTCIceCandidate       = BLOCKED;
+      window.mozRTCIceCandidate          = BLOCKED;
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        navigator.mediaDevices.getDisplayMedia = BLOCKED;
+      }
+      console.log('[eirene] WebRTC disabled. Real IP leak closed.');
+    })();
+  </script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background: #0a0a0a;
-      color: #e0e0e0;
+      background: #0a0a0a; color: #e0e0e0;
       font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 2rem;
     }
-
-    .logo {
-      font-size: 2.5rem;
-      font-weight: 200;
-      letter-spacing: 0.3em;
-      color: #ffffff;
-      margin-bottom: 0.25rem;
-    }
-
-    .tagline {
-      font-size: 0.75rem;
-      letter-spacing: 0.2em;
-      color: #555;
-      text-transform: uppercase;
-      margin-bottom: 3rem;
-    }
-
+    .logo { font-size: 2.5rem; font-weight: 200; letter-spacing: 0.3em; color: #ffffff; margin-bottom: 0.25rem; }
+    .tagline { font-size: 0.75rem; letter-spacing: 0.2em; color: #555; text-transform: uppercase; margin-bottom: 3rem; }
     .status-ring {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      border: 2px solid #222;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 2rem;
-      transition: all 0.5s ease;
-      cursor: pointer;
-      position: relative;
+      width: 120px; height: 120px; border-radius: 50%; border: 2px solid #222;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 2rem; transition: all 0.5s ease; cursor: pointer; position: relative;
     }
-
     .status-ring.idle      { border-color: #333; }
     .status-ring.listening { border-color: #4a9eff; box-shadow: 0 0 30px rgba(74,158,255,0.3); animation: pulse 1.5s infinite; }
     .status-ring.verifying { border-color: #f0a500; box-shadow: 0 0 30px rgba(240,165,0,0.3); }
     .status-ring.open      { border-color: #2ecc71; box-shadow: 0 0 30px rgba(46,204,113,0.3); }
     .status-ring.error     { border-color: #e74c3c; box-shadow: 0 0 30px rgba(231,76,60,0.3); }
     .status-ring.enrolling { border-color: #9b59b6; box-shadow: 0 0 30px rgba(155,89,182,0.3); animation: pulse 1.5s infinite; }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50%       { transform: scale(1.05); }
-    }
-
-    .ring-icon {
-      font-size: 2.5rem;
-      user-select: none;
-    }
-
-    .message {
-      font-size: 1rem;
-      color: #aaa;
-      text-align: center;
-      margin-bottom: 1.5rem;
-      min-height: 1.5rem;
-      max-width: 280px;
-      line-height: 1.5;
-    }
-
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    .ring-icon { font-size: 2.5rem; user-select: none; }
+    .message { font-size: 1rem; color: #aaa; text-align: center; margin-bottom: 1.5rem; min-height: 1.5rem; max-width: 280px; line-height: 1.5; }
     .message.error   { color: #e74c3c; }
     .message.success { color: #2ecc71; }
     .message.warning { color: #f0a500; }
     .message.enroll  { color: #9b59b6; }
-
-    .noise-level {
-      font-size: 0.7rem;
-      color: #333;
-      letter-spacing: 0.1em;
-      margin-bottom: 2rem;
-      text-transform: uppercase;
-    }
-
-    /* Enroll section */
-    .enroll-section {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-
-    .enroll-section.visible {
-      display: flex;
-    }
-
-    .enroll-progress {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .enroll-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #333;
-      transition: background 0.3s;
-    }
-
-    .enroll-dot.done { background: #9b59b6; }
+    .noise-level { font-size: 0.7rem; color: #333; letter-spacing: 0.1em; margin-bottom: 2rem; text-transform: uppercase; }
+    .enroll-section { display: none; flex-direction: column; align-items: center; gap: 1rem; margin-top: 1rem; }
+    .enroll-section.visible { display: flex; }
+    .enroll-progress { display: flex; gap: 0.5rem; }
+    .enroll-dot { width: 10px; height: 10px; border-radius: 50%; background: #333; transition: background 0.3s; }
+    .enroll-dot.done   { background: #9b59b6; }
     .enroll-dot.active { background: #4a9eff; }
-
-    .btn {
-      background: transparent;
-      border: 1px solid #333;
-      color: #666;
-      padding: 0.5rem 1.5rem;
-      border-radius: 2rem;
-      font-size: 0.75rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .btn:hover { border-color: #555; color: #aaa; }
-    .btn.enroll-btn { border-color: #9b59b6; color: #9b59b6; }
-    .btn.enroll-btn:hover { background: rgba(155,89,182,0.1); }
-
-    .tunnel-status {
-      position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.7rem;
-      color: #333;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #333;
-      transition: background 0.3s;
-    }
-
+    .btn { background: transparent; border: 1px solid #333; color: #666; padding: 0.5rem 1.5rem; border-radius: 2rem; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.3s; }
+    .btn:hover             { border-color: #555; color: #aaa; }
+    .btn.enroll-btn        { border-color: #9b59b6; color: #9b59b6; }
+    .btn.enroll-btn:hover  { background: rgba(155,89,182,0.1); }
+    .tunnel-status { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; color: #333; letter-spacing: 0.1em; text-transform: uppercase; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #333; transition: background 0.3s; }
     .dot.active { background: #2ecc71; }
     .dot.noise  { background: #4a9eff; }
-
-    .setup-link {
-      position: fixed;
-      bottom: 1.5rem;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.65rem;
-      color: #222;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      text-decoration: none;
-      transition: color 0.3s;
-    }
-
+    .setup-link { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #222; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; text-decoration: none; transition: color 0.3s; }
     .setup-link:hover { color: #555; }
-
-    .footer {
-      position: fixed;
-      bottom: 1.5rem;
-      left: 1.5rem;
-      font-size: 0.6rem;
-      color: #222;
-      letter-spacing: 0.05em;
-    }
+    .footer { position: fixed; bottom: 1.5rem; left: 1.5rem; font-size: 0.6rem; color: #222; letter-spacing: 0.05em; }
   </style>
 </head>
 <body>
@@ -198,16 +98,13 @@
   <div class="message" id="message">Tap to authenticate</div>
   <div class="noise-level" id="noise-level"></div>
 
-  <!-- Enroll section — hidden until setup mode -->
   <div class="enroll-section" id="enroll-section">
     <div class="enroll-progress">
       <div class="enroll-dot" id="edot-1"></div>
       <div class="enroll-dot" id="edot-2"></div>
       <div class="enroll-dot" id="edot-3"></div>
     </div>
-    <button class="btn enroll-btn" id="enroll-btn" onclick="enrollStep()">
-      Record passphrase
-    </button>
+    <button class="btn enroll-btn" id="enroll-btn" onclick="enrollStep()">Record passphrase</button>
     <button class="btn" onclick="exitEnroll()">Cancel</button>
   </div>
 
@@ -220,35 +117,34 @@
   </div>
 
   <a class="setup-link" id="setup-link" onclick="enterEnroll()">setup</a>
-
   <div class="footer">εἰρήνη</div>
 
   <script>
-    // ── Config ──────────────────────────────────────────────────────────────
-    const VOICE_AUTH_URL      = '/voice-auth';
+    // -- Config ---------------------------------------------------------------
+    const VOICE_AUTH_URL        = '/voice-auth';
     const NOISE_LEVEL_THRESHOLD = 55;
-    const RECORD_SECONDS      = 3;
-    const ENROLL_STEPS        = 3;
+    const RECORD_SECONDS        = 3;
+    const ENROLL_STEPS          = 3;
 
-    // ── State ────────────────────────────────────────────────────────────────
-    let token        = null;
-    let recording    = false;
-    let enrollCount  = 0;
-    let enrollMode   = false;
+    // -- State ----------------------------------------------------------------
+    let token       = null;
+    let recording   = false;
+    let enrollCount = 0;
+    let enrollMode  = false;
 
-    // ── Elements ─────────────────────────────────────────────────────────────
-    const ring         = document.getElementById('ring');
-    const ringIcon     = document.getElementById('ring-icon');
-    const message      = document.getElementById('message');
-    const noiseEl      = document.getElementById('noise-level');
-    const tunnelDot    = document.getElementById('tunnel-dot');
-    const tunnelLbl    = document.getElementById('tunnel-label');
-    const noiseDot     = document.getElementById('noise-dot');
-    const enrollSect   = document.getElementById('enroll-section');
-    const enrollBtn    = document.getElementById('enroll-btn');
-    const setupLink    = document.getElementById('setup-link');
+    // -- Elements -------------------------------------------------------------
+    const ring       = document.getElementById('ring');
+    const ringIcon   = document.getElementById('ring-icon');
+    const message    = document.getElementById('message');
+    const noiseEl    = document.getElementById('noise-level');
+    const tunnelDot  = document.getElementById('tunnel-dot');
+    const tunnelLbl  = document.getElementById('tunnel-label');
+    const noiseDot   = document.getElementById('noise-dot');
+    const enrollSect = document.getElementById('enroll-section');
+    const enrollBtn  = document.getElementById('enroll-btn');
+    const setupLink  = document.getElementById('setup-link');
 
-    // ── Service Worker Registration ──────────────────────────────────────────
+    // -- Service Worker Registration ------------------------------------------
     async function registerWorkers() {
       if (!('serviceWorker' in navigator)) {
         setMessage('Service workers not supported.', 'error');
@@ -262,7 +158,7 @@
       }
     }
 
-    // ── Noise Check ──────────────────────────────────────────────────────────
+    // -- Noise Check ----------------------------------------------------------
     async function measureNoise() {
       try {
         const stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -284,7 +180,7 @@
       }
     }
 
-    // ── Record Audio ─────────────────────────────────────────────────────────
+    // -- Record Audio ---------------------------------------------------------
     async function recordAudio(seconds) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       return new Promise((resolve, reject) => {
@@ -301,10 +197,9 @@
       });
     }
 
-    // ── Enroll Flow ──────────────────────────────────────────────────────────
+    // -- Enroll Flow ----------------------------------------------------------
     function enterEnroll() {
-      enrollMode  = true;
-      enrollCount = 0;
+      enrollMode = true; enrollCount = 0;
       enrollSect.classList.add('visible');
       setupLink.style.display = 'none';
       ring.className = 'status-ring idle';
@@ -314,12 +209,10 @@
     }
 
     function exitEnroll() {
-      enrollMode = false;
-      enrollCount = 0;
+      enrollMode = false; enrollCount = 0;
       enrollSect.classList.remove('visible');
       setupLink.style.display = '';
-      setRing('idle');
-      ringIcon.textContent = '🎙️';
+      setRing('idle'); ringIcon.textContent = '🎙️';
       setMessage('Tap to authenticate');
       updateEnrollDots();
     }
@@ -327,56 +220,35 @@
     function updateEnrollDots() {
       for (let i = 1; i <= 3; i++) {
         const dot = document.getElementById(`edot-${i}`);
-        if (i <= enrollCount)       dot.className = 'enroll-dot done';
+        if (i <= enrollCount)           dot.className = 'enroll-dot done';
         else if (i === enrollCount + 1) dot.className = 'enroll-dot active';
-        else                        dot.className = 'enroll-dot';
+        else                            dot.className = 'enroll-dot';
       }
     }
 
     async function enrollStep() {
       if (recording) return;
-      recording = true;
-      enrollBtn.disabled = true;
-
+      recording = true; enrollBtn.disabled = true;
       try {
-        // Noise check
-        setRing('verifying');
-        setMessage('Checking environment…', 'enroll');
+        setRing('verifying'); setMessage('Checking environment…', 'enroll');
         const db = await measureNoise();
-
         if (db > NOISE_LEVEL_THRESHOLD) {
-          setRing('error');
-          setMessage('Too loud — find a quieter spot.', 'warning');
-          recording = false;
-          enrollBtn.disabled = false;
+          setRing('error'); setMessage('Too loud — find a quieter spot.', 'warning');
+          recording = false; enrollBtn.disabled = false;
           setTimeout(() => { setRing('idle'); setMessage(`Recording ${enrollCount + 1} of 3 — tap to record.`, 'enroll'); }, 2500);
           return;
         }
-
-        // Record
-        setRing('enrolling');
-        setMessage(`Recording ${enrollCount + 1} of 3 — speak now…`, 'enroll');
+        setRing('enrolling'); setMessage(`Recording ${enrollCount + 1} of 3 — speak now…`, 'enroll');
         const audioBlob = await recordAudio(RECORD_SECONDS);
-
-        // Send to enroll
-        setRing('verifying');
-        setMessage('Saving voiceprint…', 'enroll');
-
+        setRing('verifying'); setMessage('Saving voiceprint…', 'enroll');
         const response = await fetch(`${VOICE_AUTH_URL}/enroll`, {
-          method: 'POST',
-          headers: { 'Content-Type': audioBlob.type },
-          body: audioBlob
+          method: 'POST', headers: { 'Content-Type': audioBlob.type }, body: audioBlob
         });
-
         const data = await response.json();
-
         if (data.status === 'enrolled') {
-          enrollCount++;
-          updateEnrollDots();
-
+          enrollCount++; updateEnrollDots();
           if (enrollCount >= ENROLL_STEPS) {
-            setRing('open');
-            ringIcon.textContent = '✅';
+            setRing('open'); ringIcon.textContent = '✅';
             setMessage('Enrolled! Restore threshold to 0.75 in .env and restart.', 'success');
             enrollBtn.style.display = 'none';
             setTimeout(() => exitEnroll(), 4000);
@@ -386,116 +258,112 @@
             enrollBtn.disabled = false;
           }
         } else {
-          setRing('error');
-          setMessage('Enroll failed. Try again.', 'error');
+          setRing('error'); setMessage('Enroll failed. Try again.', 'error');
           enrollBtn.disabled = false;
           setTimeout(() => { setRing('idle'); setMessage(`Recording ${enrollCount + 1} of 3 — tap to record.`, 'enroll'); }, 2000);
         }
-
       } catch (e) {
-        setRing('error');
-        setMessage('Error. Try again.', 'error');
-        enrollBtn.disabled = false;
-        console.error(e);
+        setRing('error'); setMessage('Error. Try again.', 'error');
+        enrollBtn.disabled = false; console.error(e);
       }
-
       recording = false;
     }
 
-    // ── Auth Flow ─────────────────────────────────────────────────────────────
+    // -- Auth Flow ------------------------------------------------------------
     async function authenticate() {
       if (recording || enrollMode) return;
       recording = true;
-
       try {
-        setRing('verifying');
-        setMessage('Checking environment…');
+        setRing('verifying'); setMessage('Checking environment…');
         const db = await measureNoise();
-
         if (db > NOISE_LEVEL_THRESHOLD) {
-          setRing('error');
-          setMessage('Environment too loud — find a quieter spot.', 'warning');
+          setRing('error'); setMessage('Environment too loud — find a quieter spot.', 'warning');
           recording = false;
           setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); }, 3000);
           return;
         }
-
-        setRing('listening');
-        setMessage('Speak your passphrase…');
+        setRing('listening'); setMessage('Speak your passphrase…');
         const audioBlob = await recordAudio(RECORD_SECONDS);
-
-        setRing('verifying');
-        setMessage('Verifying…');
-
+        setRing('verifying'); setMessage('Verifying…');
         const response = await fetch(`${VOICE_AUTH_URL}/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': audioBlob.type },
-          body: audioBlob
+          method: 'POST', headers: { 'Content-Type': audioBlob.type }, body: audioBlob
         });
-
         const data = await response.json();
-
         if (data.status === 'verified') {
           token = data.token;
-
           if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-              type: 'SET_TOKEN',
-              token: token
-            });
+            navigator.serviceWorker.controller.postMessage({ type: 'SET_TOKEN', token: token });
           }
-
-          setRing('open');
-          setMessage('Tunnel open.', 'success');
-          ringIcon.textContent = '🔓';
-          setTunnelStatus(true);
-
+          setRing('open'); setMessage('Tunnel open.', 'success');
+          ringIcon.textContent = '🔓'; setTunnelStatus(true);
         } else if (data.status === 'not_recognised') {
-          setRing('error');
-          setMessage('Not recognised. Try again.', 'error');
+          setRing('error'); setMessage('Not recognised. Try again.', 'error');
           setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
-
         } else {
-          setRing('error');
-          setMessage('Auth error. Try again.', 'error');
+          setRing('error'); setMessage('Auth error. Try again.', 'error');
           setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
         }
-
       } catch (e) {
-        setRing('error');
-        setMessage('Something went wrong.', 'error');
+        setRing('error'); setMessage('Something went wrong.', 'error');
         console.error(e);
         setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
       }
-
       recording = false;
     }
 
-    // ── UI Helpers ───────────────────────────────────────────────────────────
-    function setRing(state) { ring.className = `status-ring ${state}`; }
-    function setMessage(text, type = '') {
-      message.textContent = text;
-      message.className   = `message ${type}`;
-    }
+    // -- UI Helpers -----------------------------------------------------------
+    function setRing(state)  { ring.className = `status-ring ${state}`; }
+    function setMessage(text, type = '') { message.textContent = text; message.className = `message ${type}`; }
     function setTunnelStatus(open) {
       tunnelDot.className   = open ? 'dot active' : 'dot';
       tunnelLbl.textContent = open ? 'tunnel open' : 'tunnel closed';
     }
 
-    // ── Init ─────────────────────────────────────────────────────────────────
+    // -- Session End ----------------------------------------------------------
+    function sendSessionEnd() {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'SESSION_END' });
+      }
+    }
+
+    // Tab hidden — phone locks, user switches app, minimises browser
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        sendSessionEnd();
+        console.log('[eirene] Page hidden — session ended.');
+      }
+    });
+
+    // Tab/window closing
+    window.addEventListener('beforeunload', () => {
+      sendSessionEnd();
+    });
+
+    // -- Init -----------------------------------------------------------------
     ring.addEventListener('click', authenticate);
-    // Start noise worker
-    const noiseWorker = new Worker("/noise-worker.js");
-    noiseWorker.onerror = e => console.error("[noise-worker] Error:", e);
-    console.log("[noise-worker] Started.");
 
-    registerWorkers().then(() => { noiseDot.style.opacity = "1"; });
+    const noiseWorker = new Worker('/noise-worker.js');
+    noiseWorker.onerror = e => console.error('[noise-worker] Error:', e);
+    console.log('[noise-worker] Started.');
 
+    registerWorkers().then(() => { noiseDot.style.opacity = '1'; });
+
+    // -- SW Message Handler ---------------------------------------------------
     navigator.serviceWorker.addEventListener('message', event => {
       if (event.data.type === 'TUNNEL_URL_UPDATED') {
         console.log('Tunnel URL updated:', event.data.url);
       }
+      // SW ended session — reset UI, force re-auth
+      if (event.data.type === 'SESSION_ENDED') {
+        token = null;
+        setRing('idle');
+        setMessage('Tap to authenticate');
+        ringIcon.textContent = '🎙️';
+        setTunnelStatus(false);
+        console.log('[eirene] Session ended. Re-authentication required.');
+      }
     });
+
   </script>
 </body>
 </html>

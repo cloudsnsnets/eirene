@@ -3,6 +3,8 @@
  * Service Worker — intercepts all fetch requests
  * Routes through Eirene proxy with JWT authentication
  * Ad/tracker blocking + JS tracker blocking + tracking parameter stripping
+ * WebRTC STUN/TURN blocking
+ * Session isolation — token cleared, cache wiped, session ID rotated on end
  *
  * Cloud SNS Pty Ltd
  */
@@ -10,41 +12,19 @@
 const CACHE_NAME = 'eirene-v1';
 const PROXY_URL  = 'https://eirene-proxy.elizahome.com/fetch';
 
-// ── State ────────────────────────────────────────────────────────────────────
-let jwtToken = null;
+// -- State --------------------------------------------------------------------
+let jwtToken  = null;
+let sessionId = crypto.randomUUID();   // Rotates on every new auth + every session end
 
-// ── Tracking Parameter Stripper ──────────────────────────────────────────────
+// -- Tracking Parameter Stripper ----------------------------------------------
 const TRACKING_PARAMS = new Set([
-  // Google
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
   'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic',
   'gclid', 'gclsrc', 'dclid', '_gl', '_ga',
-  // Facebook/Meta
   'fbclid', 'fb_action_ids', 'fb_action_types', 'fb_ref', 'fb_source',
-  // Microsoft
-  'msclkid',
-  // Mailchimp
-  'mc_eid', 'mc_cid',
-  // HubSpot
-  '_hsenc', '_hsmi',
-  // Marketo
-  'mkt_tok',
-  // Twitter/X
-  'twclid',
-  // LinkedIn
-  'li_fat_id',
-  // TikTok
-  'ttclid',
-  // Pinterest
-  'epik',
-  // Snapchat
-  'ScCid',
-  // Adobe
-  's_cid', 'adobe_mc',
-  // Amazon
-  'tag', 'ascsubtag',
-  // General
-  'ref', 'igshid', 'zanpid', 'yclid', 'wickedid',
+  'msclkid', 'mc_eid', 'mc_cid', '_hsenc', '_hsmi', 'mkt_tok',
+  'twclid', 'li_fat_id', 'ttclid', 'epik', 'ScCid', 's_cid', 'adobe_mc',
+  'tag', 'ascsubtag', 'ref', 'igshid', 'zanpid', 'yclid', 'wickedid',
   'irclickid', 'impact_id', 'affiliate_id',
 ]);
 
@@ -58,35 +38,21 @@ function stripTrackingParams(url) {
         stripped = true;
       }
     }
-    if (stripped) {
-      console.log('[tunnel-worker] Stripped tracking params from:', u.hostname);
-    }
+    if (stripped) console.log('[tunnel-worker] Stripped tracking params from:', u.hostname);
     return u.toString();
   } catch (e) {
     return url;
   }
 }
 
-// ── JS Tracker Script Patterns ────────────────────────────────────────────────
-// Blocks tracking scripts even when served from first-party/CDN domains
+// -- JS Tracker Script Patterns -----------------------------------------------
 const TRACKING_SCRIPT_PATTERNS = [
-  // Google
-  '/gtag/', '/gtag.js', '/gtm.js', '/analytics.js',
-  '/google-analytics', '/ga.js', '/ga4',
-  // Facebook
+  '/gtag/', '/gtag.js', '/gtm.js', '/analytics.js', '/google-analytics', '/ga.js', '/ga4',
   '/fbevents.js', '/fbpixel', '/fb-pixel',
-  // General patterns
   '/tracking', '/telemetry', '/fingerprint',
-  '/beacon.min.js', '/beacon.js',
-  '/pixel.gif', '/pixel.png', '/pixel.js',
-  '/collect.js', '/event.js', '/ping.js',
-  '/tr/', '/track/', '/tracker/',
-  // Hotjar, FullStory etc
-  '/hj.js', '/hjid', '/fs.js',
-  // Clarity
-  '/clarity.js',
-  // Segment
-  '/analytics.min.js',
+  '/beacon.min.js', '/beacon.js', '/pixel.gif', '/pixel.png', '/pixel.js',
+  '/collect.js', '/event.js', '/ping.js', '/tr/', '/track/', '/tracker/',
+  '/hj.js', '/hjid', '/fs.js', '/clarity.js', '/analytics.min.js',
 ];
 
 function isTrackingScript(url) {
@@ -98,79 +64,68 @@ function isTrackingScript(url) {
   }
 }
 
-// ── Ad/Tracker Domain Blocklist ──────────────────────────────────────────────
+// -- WebRTC STUN/TURN Blocklist -----------------------------------------------
+const STUN_TURN_DOMAINS = new Set([
+  'stun.l.google.com', 'stun1.l.google.com', 'stun2.l.google.com',
+  'stun3.l.google.com', 'stun4.l.google.com',
+  'stun.services.mozilla.com', 'stun.mozilla.com',
+  'stun.cloudflare.com', 'stun.twilio.com', 'global.stun.twilio.com',
+  'stun.ekiga.net', 'stun.ideasip.com', 'stunserver.org',
+  'turn.l.google.com', 'turn.twilio.com', 'global.turn.twilio.com',
+]);
+
+function isStunTurnEndpoint(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    if (STUN_TURN_DOMAINS.has(hostname)) return true;
+    if (/^stun[0-9]*\./.test(hostname)) return true;
+    if (/^turn[0-9]*\./.test(hostname)) return true;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+// -- Ad/Tracker Domain Blocklist ----------------------------------------------
 const BLOCKED_DOMAINS = new Set([
-  // Cloudflare analytics (yes, even theirs)
   'static.cloudflareinsights.com', 'cloudflareinsights.com',
-  // Google analytics & ads
   'google-analytics.com', 'googletagmanager.com', 'googletagservices.com',
   'googlesyndication.com', 'doubleclick.net', 'google-adservices.com',
   'adservice.google.com', 'googleadservices.com', 'stats.g.doubleclick.net',
-  // Social tracking
   'facebook.com', 'connect.facebook.net', 'facebook.net',
   'analytics.twitter.com', 'ads.twitter.com', 't.co',
   'linkedin.com', 'snap.licdn.com', 'platform.linkedin.com',
   'analytics.tiktok.com', 'ads.tiktok.com',
-  'ct.pinterest.com', 'log.pinterest.com',
-  'tr.snapchat.com', 'sc-static.net',
-  // Microsoft
-  'clarity.ms', 'bat.bing.com', 'c.bing.com',
-  'ads.microsoft.com', 'bingads.microsoft.com',
-  // Apple
+  'ct.pinterest.com', 'log.pinterest.com', 'tr.snapchat.com', 'sc-static.net',
+  'clarity.ms', 'bat.bing.com', 'c.bing.com', 'ads.microsoft.com', 'bingads.microsoft.com',
   'analytics.apple.com',
-  // Yahoo/Oath
-  'analytics.yahoo.com', 'sp.analytics.yahoo.com',
-  'adtech.de', 'advertising.com', 'adtechus.com',
-  // Adobe
-  'omtrdc.net', 'adobedtm.com', 'demdex.net', '2o7.net',
-  'adobedc.net', 'everesttech.net',
-  // Amazon ads
+  'analytics.yahoo.com', 'sp.analytics.yahoo.com', 'adtech.de', 'advertising.com', 'adtechus.com',
+  'omtrdc.net', 'adobedtm.com', 'demdex.net', '2o7.net', 'adobedc.net', 'everesttech.net',
   'amazon-adsystem.com', 'assoc-amazon.com', 'fls-na.amazon.com',
-  // Ad networks
   'scorecardresearch.com', 'quantserve.com', 'quantcast.com',
   'outbrain.com', 'taboola.com', 'media.net',
-  'criteo.com', 'criteo.net', 'adsafeprotected.com',
-  'moatads.com', 'pubmatic.com', 'openx.net', 'rubiconproject.com',
+  'criteo.com', 'criteo.net', 'adsafeprotected.com', 'moatads.com',
+  'pubmatic.com', 'openx.net', 'rubiconproject.com',
   'appnexus.com', 'adnxs.com', 'smartadserver.com', 'sovrn.com',
   'lijit.com', 'contextweb.com', 'casalemedia.com', 'indexexchange.com',
   'yieldmanager.com', 'bidswitch.net', 'sharethrough.com', 'triplelift.com',
   '33across.com', 'rhythmone.com', 'yieldmo.com', 'undertone.com',
   'spotxchange.com', 'sonobi.com', 'adnuntius.com',
-  // Fingerprinting & session recording
   'hotjar.com', 'mouseflow.com', 'fullstory.com', 'logrocket.com',
   'segment.com', 'segment.io', 'mixpanel.com', 'amplitude.com',
-  'heap.io', 'heapanalytics.com', 'kissmetrics.com',
-  'crazyegg.com', 'clicktale.net', 'inspectlet.com',
-  // Marketing automation
-  'intercom.io', 'intercom.com', 'intercomassets.com',
-  'optimizely.com',
+  'heap.io', 'heapanalytics.com', 'kissmetrics.com', 'crazyegg.com', 'clicktale.net', 'inspectlet.com',
+  'intercom.io', 'intercom.com', 'intercomassets.com', 'optimizely.com',
   'hubspot.com', 'hsforms.com', 'hs-scripts.com', 'hubapi.com',
-  'marketo.com', 'mktoresp.com', 'munchkin.marketo.com',
-  'pardot.com', 'pi.pardot.com',
+  'marketo.com', 'mktoresp.com', 'munchkin.marketo.com', 'pardot.com', 'pi.pardot.com',
   'klaviyo.com', 'mailchimp.com', 'list-manage.com',
-  // A/B testing
-  'cdn.optimizely.com', 'logx.optimizely.com',
-  'abtasty.com', 'convertexperiments.com',
-  // Analytics platforms
-  'chartbeat.com', 'chartbeat.net',
-  'newrelic.com', 'nr-data.net',
-  'bugsnag.com', 'sentry.io',
-  // Data brokers
-  'bluekai.com', 'krxd.net', 'turn.com',
-  'eyeota.net', 'exelate.com', 'nielsen.com',
-  'acxiom.com', 'liveramp.com', 'rlcdn.com',
-  'mathtag.com', 'adroll.com', 'perfectaudience.com',
-  // Survey & feedback trackers
+  'cdn.optimizely.com', 'logx.optimizely.com', 'abtasty.com', 'convertexperiments.com',
+  'chartbeat.com', 'chartbeat.net', 'newrelic.com', 'nr-data.net', 'bugsnag.com', 'sentry.io',
+  'bluekai.com', 'krxd.net', 'turn.com', 'eyeota.net', 'exelate.com', 'nielsen.com',
+  'acxiom.com', 'liveramp.com', 'rlcdn.com', 'mathtag.com', 'adroll.com', 'perfectaudience.com',
   'qualtrics.com', 'medallia.com', 'usabilla.com',
-  // Chat widgets that track
-  'zdassets.com', 'zendesk.com',
-  'livechatinc.com', 'tawk.to',
-  'drift.com', 'driftt.com',
-  'crisp.chat', 'widget.intercom.io',
-  // CDN-served trackers
-  'tiqcdn.com', 'tvpixel.com', 'bazaarvoice.com',
-  'trustpilot.com', 'yotpo.com',
-  // Australia-specific
+  'zdassets.com', 'zendesk.com', 'livechatinc.com', 'tawk.to',
+  'drift.com', 'driftt.com', 'crisp.chat', 'widget.intercom.io',
+  'tiqcdn.com', 'tvpixel.com', 'bazaarvoice.com', 'trustpilot.com', 'yotpo.com',
   'secure-au.imrworldwide.com',
 ]);
 
@@ -178,15 +133,13 @@ function isDomainBlocked(url) {
   try {
     const hostname = new URL(url).hostname;
     for (const blocked of BLOCKED_DOMAINS) {
-      if (hostname === blocked || hostname.endsWith(`.${blocked}`)) {
-        return true;
-      }
+      if (hostname === blocked || hostname.endsWith(`.${blocked}`)) return true;
     }
   } catch (e) {}
   return false;
 }
 
-// ── Noise Domains — bypass proxy, go direct ──────────────────────────────────
+// -- Noise Domains — bypass proxy, go direct ----------------------------------
 const NOISE_DOMAINS = new Set([
   'abc.net.au', 'bbc.com', 'smh.com.au', 'theaustralian.com.au',
   'bom.gov.au', 'weather.com', 'wikipedia.org', 'dictionary.com',
@@ -205,17 +158,35 @@ function isNoiseDomain(url) {
   return false;
 }
 
-// ── Eirene domains — never proxy ─────────────────────────────────────────────
+// -- Eirene domains — never proxy ---------------------------------------------
 function isEireneDomain(url) {
   try {
     const hostname = new URL(url).hostname;
-    return hostname.endsWith('.elizahome.com') ||
-           hostname === 'elizahome.com';
+    return hostname.endsWith('.elizahome.com') || hostname === 'elizahome.com';
   } catch (e) {}
   return false;
 }
 
-// ── Install & Activate ───────────────────────────────────────────────────────
+// -- Session Management -------------------------------------------------------
+async function endSession() {
+  jwtToken  = null;
+  sessionId = crypto.randomUUID();   // Old session ID is dead — rotate immediately
+
+  // Wipe all SW caches — no state persists between sessions
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(key => caches.delete(key)));
+    console.log('[tunnel-worker] Session ended. Token cleared. Caches wiped. ID rotated.');
+  } catch (e) {
+    console.log('[tunnel-worker] Session ended. Token cleared. ID rotated.');
+  }
+
+  // Notify all open clients — UI resets to idle
+  const allClients = await clients.matchAll({ includeUncontrolled: true });
+  allClients.forEach(client => client.postMessage({ type: 'SESSION_ENDED' }));
+}
+
+// -- Install & Activate -------------------------------------------------------
 self.addEventListener('install', event => {
   console.log('[tunnel-worker] Installing...');
   self.skipWaiting();
@@ -226,81 +197,76 @@ self.addEventListener('activate', event => {
   event.waitUntil(clients.claim());
 });
 
-// ── Message Handler ──────────────────────────────────────────────────────────
+// -- Message Handler ----------------------------------------------------------
 self.addEventListener('message', event => {
   const { type, token } = event.data || {};
+
   if (type === 'SET_TOKEN') {
-    jwtToken = token;
-    console.log('[tunnel-worker] JWT token received.');
+    jwtToken  = token;
+    sessionId = crypto.randomUUID();   // New auth = new session ID
+    console.log('[tunnel-worker] JWT received. Session ID rotated.');
+  }
+
+  if (type === 'SESSION_END') {
+    event.waitUntil(endSession());
   }
 });
 
-// ── Fetch Interceptor ────────────────────────────────────────────────────────
+// -- Fetch Interceptor --------------------------------------------------------
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url     = request.url;
 
-  // Never intercept Eirene's own domains
   if (isEireneDomain(url)) return;
-
-  // Never intercept noise traffic — goes direct
   if (isNoiseDomain(url)) return;
 
-  // Block beacon API calls — silent 200
   if (request.destination === 'beacon') {
-    event.respondWith(
-      new Response('', { status: 200, statusText: 'Blocked by Eirene' })
-    );
+    event.respondWith(new Response('', { status: 200, statusText: 'Blocked by Eirene' }));
     return;
   }
 
-  // Block tracker domains — silent 200
+  if (isStunTurnEndpoint(url)) {
+    console.log('[tunnel-worker] Blocked STUN/TURN:', new URL(url).hostname);
+    event.respondWith(new Response('', { status: 200, statusText: 'Blocked by Eirene' }));
+    return;
+  }
+
   if (isDomainBlocked(url)) {
     console.log('[tunnel-worker] Blocked domain:', new URL(url).hostname);
-    event.respondWith(
-      new Response('', { status: 200, statusText: 'Blocked by Eirene' })
-    );
+    event.respondWith(new Response('', { status: 200, statusText: 'Blocked by Eirene' }));
     return;
   }
 
-  // Block tracking scripts by URL pattern — even from first-party domains
   if (isTrackingScript(url)) {
     console.log('[tunnel-worker] Blocked script:', url);
-    event.respondWith(
-      new Response('// Blocked by Eirene', {
-        status: 200,
-        headers: { 'Content-Type': 'application/javascript' }
-      })
-    );
+    event.respondWith(new Response('// Blocked by Eirene', {
+      status: 200,
+      headers: { 'Content-Type': 'application/javascript' }
+    }));
     return;
   }
 
-  // No token yet — pass through (pre-auth)
   if (!jwtToken) return;
 
-  // Route everything else through Eirene proxy
   event.respondWith(routeThroughProxy(request));
 });
 
-// ── Proxy Routing ─────────────────────────────────────────────────────────────
+// -- Proxy Routing ------------------------------------------------------------
 async function routeThroughProxy(request) {
   try {
-    // Strip tracking parameters from URL
     const cleanUrl = stripTrackingParams(request.url);
 
-    // Read body if needed
     let body = undefined;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       body = await request.arrayBuffer();
     }
 
-    // Build clean headers — strip tracking, add auth
     const headers = new Headers();
-    headers.set('X-Eirene-Auth',   `Bearer ${jwtToken}`);
-    headers.set('X-Eirene-Target', cleanUrl);
-    headers.set('X-Eirene-Method', request.method);
+    headers.set('X-Eirene-Auth',    `Bearer ${jwtToken}`);
+    headers.set('X-Eirene-Target',  cleanUrl);
+    headers.set('X-Eirene-Method',  request.method);
+    headers.set('X-Eirene-Session', sessionId);   // Internal — proxy strips before forwarding
 
-    // Forward safe original headers only
     const SAFE_HEADERS = [
       'accept', 'accept-language', 'content-type', 'content-length',
       'range', 'if-modified-since', 'if-none-match', 'cache-control',
@@ -310,7 +276,6 @@ async function routeThroughProxy(request) {
       if (v) headers.set(h, v);
     }
 
-    // POST to proxy /fetch endpoint
     const proxyResponse = await fetch(PROXY_URL, {
       method:      'POST',
       headers:     headers,

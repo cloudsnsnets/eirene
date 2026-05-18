@@ -216,3 +216,30 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ── Eirene — never commit ─────────────────────────────────────────────────────
+
+# Environment — secrets live here
+.env
+
+# Voice biometrics — never ever
+voice-auth/Hopper.wav
+voice-auth/enroll_1.webm
+voice-auth/*.wav
+voice-auth/*.webm
+voice-auth/*.mp4
+voice-auth/*.ogg
+
+# Backend — proprietary Cloud SNS IP
+voice-auth/auth.py
+voice-auth/requirements.txt
+proxy/proxy.py
+proxy/phi_stripper_prod.py
+proxy/requirements.txt
+tunnel-hopper/hopper.py
+tunnel-hopper/requirements.txt
+tunnel-hopper/tunnel_hopper_sw_addition.js
+
+# Cloudflare credentials
+*.token
+cloudflare.ini

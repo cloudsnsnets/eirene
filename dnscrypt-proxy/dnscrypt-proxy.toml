@@ -1,0 +1,59 @@
+## EIRENE — dnscrypt-proxy configuration
+## Cloudflare DoH only. No fallback. No plain DNS.
+## Listens on 0.0.0.0:5300 inside eirene-net.
+## Only the eirene-proxy container talks to this.
+##
+## Cloud SNS Pty Ltd
+
+## Listen address
+listen_addresses = ['0.0.0.0:5300']
+
+## Cloudflare DoH only — fetched from official resolver list on startup
+server_names = ['cloudflare']
+
+## DoH only — no DNSCrypt, no plain DNS
+doh_servers      = true
+dnscrypt_servers = false
+
+## No IPv6
+ipv4_servers  = true
+ipv6_servers  = false
+block_ipv6    = false
+
+## Require no-log servers
+require_dnssec   = false
+require_nolog    = true
+require_nofilter = true
+
+## Timeouts
+timeout   = 5000
+keepalive = 30
+
+## Logging — no query logging
+log_level = 2
+
+## Cache
+cache             = true
+cache_size        = 512
+cache_min_ttl     = 600
+cache_max_ttl     = 86400
+cache_neg_min_ttl = 60
+cache_neg_max_ttl = 600
+
+## Fallback resolver — used ONLY to bootstrap the resolver list download
+## 1.1.1.1 plain DNS, one time, on startup. After that: DoH only.
+bootstrap_resolvers = ['1.1.1.1:53']
+ignore_system_dns   = true
+
+## Resolver list — official DNSCrypt public resolver list
+## dnscrypt-proxy fetches this on startup to get Cloudflare's stamp
+[sources]
+
+  [sources.public-resolvers]
+  urls = [
+    'https://raw.githubusercontent.com/DNSCrypt/dnscrypt-resolvers/master/v3/public-resolvers.md',
+    'https://download.dnscrypt.info/resolvers-list/v3/public-resolvers.md'
+  ]
+  minisign_key = 'RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3'
+  cache_file   = '/var/cache/dnscrypt-proxy/public-resolvers.md'
+  refresh_delay = 72
