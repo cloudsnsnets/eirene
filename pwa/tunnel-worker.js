@@ -15,6 +15,7 @@ const PROXY_URL  = 'https://eirene-proxy.elizahome.com/fetch';
 // -- State --------------------------------------------------------------------
 let jwtToken  = null;
 let sessionId = crypto.randomUUID();   // Rotates on every new auth + every session end
+let torMode   = false;                 // Set by SET_TOR_MODE message from page
 
 // -- Tracking Parameter Stripper ----------------------------------------------
 const TRACKING_PARAMS = new Set([
@@ -210,6 +211,11 @@ self.addEventListener('message', event => {
   if (type === 'SESSION_END') {
     event.waitUntil(endSession());
   }
+
+  if (type === 'SET_TOR_MODE') {
+    torMode = event.data.enabled;
+    console.log(`[tunnel-worker] Tor mode: ${torMode ? 'ON' : 'OFF'}`);
+  }
 });
 
 // -- Fetch Interceptor --------------------------------------------------------
@@ -248,6 +254,24 @@ self.addEventListener('fetch', event => {
 
   if (!jwtToken) return;
 
+  // In Tor mode — block audio and video requests at SW level
+  // Belt-and-suspenders with proxy-level blocking
+  if (torMode) {
+    const accept = request.headers.get('accept') || '';
+    const url_lower = url.toLowerCase();
+    if (
+      accept.includes('audio/') ||
+      accept.includes('video/') ||
+      url_lower.match(/\.(mp3|mp4|ogg|wav|webm|avi|mkv|flac|aac|m4a|m4v|mov)([?#]|$)/)
+    ) {
+      console.log('[tunnel-worker] Tor mode: blocked media request:', url);
+      event.respondWith(
+        new Response('Media blocked in Tor mode', { status: 403 })
+      );
+      return;
+    }
+  }
+
   event.respondWith(routeThroughProxy(request));
 });
 
@@ -266,6 +290,9 @@ async function routeThroughProxy(request) {
     headers.set('X-Eirene-Target',  cleanUrl);
     headers.set('X-Eirene-Method',  request.method);
     headers.set('X-Eirene-Session', sessionId);   // Internal — proxy strips before forwarding
+    if (torMode) {
+      headers.set('X-Eirene-Tor', 'true');           // Internal — proxy strips before forwarding
+    }
 
     const SAFE_HEADERS = [
       'accept', 'accept-language', 'content-type', 'content-length',

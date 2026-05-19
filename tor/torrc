@@ -1,0 +1,28 @@
+# EIRENE — Tor configuration
+# SOCKS5 proxy only. No relay. No exit node. Client only.
+# Internal to eirene-net — not exposed to host.
+#
+# Cloud SNS Pty Ltd
+
+# SOCKS5 on all interfaces — accessible to eirene-proxy by name
+SocksPort 0.0.0.0:9050
+
+# No relay — we are a client only
+ORPort 0
+DirPort 0
+
+# No exit — we never relay others' traffic
+ExitPolicy reject *:*
+
+# New circuit for each session (proxy requests this via NEWNYM signal)
+MaxCircuitDirtiness 60
+
+# Faster startup
+CircuitBuildTimeout 10
+LearnCircuitBuildTimeout 0
+
+# Log to stdout for Docker
+Log notice stdout
+
+# Data directory
+DataDirectory /var/lib/tor

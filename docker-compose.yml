@@ -3,10 +3,11 @@ name: eirene
 # ── Eirene Stack ──────────────────────────────────────────────────────────────
 #
 # Services talk to each other by name on eirene-net:
-#   eirene-dnscrypt:5300   ← Cloudflare DoH resolver (new)
+#   eirene-dnscrypt:5300   ← Cloudflare DoH resolver
 #   eirene-voice-auth:8081
 #   eirene-proxy:8080
 #   eirene-pwa:8082
+#   eirene-tor:9050        ← Tor SOCKS5 (v1.2)
 #
 # External ports (host):
 #   8081 → voice-auth (for testing only)
@@ -30,6 +31,14 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  tor:
+    build:
+      context: ./tor
+    container_name: eirene-tor
+    restart: unless-stopped
+    networks:
+      - eirene-net
 
   voice-auth:
     build:
@@ -69,6 +78,9 @@ services:
       - SOCKS_PORT=1080
       - DNSCRYPT_HOST=eirene-dnscrypt
       - DNSCRYPT_PORT=5300
+      - TOR_HOST=eirene-tor
+      - TOR_PORT=9050
+      - TOR_MODE=${TOR_MODE:-false}
     depends_on:
       voice-auth:
         condition: service_healthy
@@ -128,6 +140,7 @@ services:
 volumes:
   voiceprints:
     name: eirene_voiceprints
+    external: true
 
 # ── Networks ──────────────────────────────────────────────────────────────────
 networks:
