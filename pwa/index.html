@@ -530,7 +530,56 @@
     noiseWorker.onerror = e => console.error('[noise-worker] Error:', e);
     console.log('[noise-worker] Started.');
 
-    registerWorkers().then(() => { noiseDot.style.opacity = '1'; });
+    registerWorkers().then(() => {
+      noiseDot.style.opacity = '1';
+      // Wait for SW to be active and controlling before counting tabs
+      if (navigator.serviceWorker.controller) {
+        // SW already controlling — check immediately with small delay
+        setTimeout(checkOtherTabs, 500);
+      } else {
+        // SW just installed — wait for it to take control
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          setTimeout(checkOtherTabs, 500);
+        });
+      }
+    });
+
+
+    // -- Tab Check -----------------------------------------------------------
+    async function checkOtherTabs() {
+      try {
+        // Ask the SW how many clients (tabs/windows) it controls
+        const reg = await navigator.serviceWorker.ready;
+        if (!reg.active) return;
+
+        // Request client count from SW
+        const count = await new Promise(resolve => {
+          const channel = new MessageChannel();
+          channel.port1.onmessage = e => resolve(e.data.count);
+          reg.active.postMessage({ type: 'COUNT_CLIENTS' }, [channel.port2]);
+          // Timeout fallback
+          setTimeout(() => resolve(0), 1000);
+        });
+
+        console.log('[eirene] Open tabs:', count);
+        if (count > 1) {
+          showTabWarning(count);
+        }
+      } catch(e) {
+        console.log('[eirene] Tab check error:', e);
+      }
+    }
+
+    function showTabWarning() {
+      setRing('error');
+      ringIcon.textContent = '⚠️';
+      setMessage('Other tabs detected. Close browser. Reopen. Do not restore tabs.', 'warning');
+      setTimeout(() => {
+        setRing('idle');
+        ringIcon.textContent = '🎙️';
+        setMessage('Tap to authenticate when ready.');
+      }, 8000);
+    }
 
     // -- SW Message Handler ---------------------------------------------------
     navigator.serviceWorker.addEventListener('message', event => {

@@ -212,6 +212,14 @@ self.addEventListener('message', event => {
     event.waitUntil(endSession());
   }
 
+  if (type === 'COUNT_CLIENTS') {
+    clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(all => {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ count: all.length });
+      }
+    });
+  }
+
   if (type === 'SET_TOR_MODE') {
     torMode = event.data.enabled;
     console.log(`[tunnel-worker] Tor mode: ${torMode ? 'ON' : 'OFF'}`);
