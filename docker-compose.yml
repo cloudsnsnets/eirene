@@ -55,6 +55,7 @@ services:
       - JWT_SOFT_EXPIRY=14400
       - JWT_HARD_EXPIRY=28800
       - SIMILARITY_THRESHOLD=${SIMILARITY_THRESHOLD:-0.75}
+      - ENROLL_SECRET=${ENROLL_SECRET}
     networks:
       - eirene-net
     healthcheck:

@@ -140,25 +140,6 @@ function isDomainBlocked(url) {
   return false;
 }
 
-// -- Noise Domains — bypass proxy, go direct ----------------------------------
-const NOISE_DOMAINS = new Set([
-  'abc.net.au', 'bbc.com', 'smh.com.au', 'theaustralian.com.au',
-  'bom.gov.au', 'weather.com', 'wikipedia.org', 'dictionary.com',
-  'afl.com.au', 'nrl.com', 'foxsports.com.au', 'healthdirect.gov.au',
-  'beyondblue.org.au', 'gumtree.com.au', 'ato.gov.au', 'mygov.com.au',
-  'reddit.com', 'commbank.com.au', 'seek.com.au', 'realestate.com.au',
-]);
-
-function isNoiseDomain(url) {
-  try {
-    const hostname = new URL(url).hostname;
-    for (const domain of NOISE_DOMAINS) {
-      if (hostname === domain || hostname.endsWith(`.${domain}`)) return true;
-    }
-  } catch (e) {}
-  return false;
-}
-
 // -- Eirene domains — never proxy ---------------------------------------------
 function isEireneDomain(url) {
   try {
@@ -213,11 +194,13 @@ self.addEventListener('message', event => {
   }
 
   if (type === 'COUNT_CLIENTS') {
-    clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(all => {
-      if (event.ports && event.ports[0]) {
-        event.ports[0].postMessage({ count: all.length });
-      }
-    });
+    event.waitUntil(
+      clients.matchAll({ includeUncontrolled: true, type: 'window' }).then(all => {
+        if (event.ports && event.ports[0]) {
+          event.ports[0].postMessage({ count: all.length });
+        }
+      })
+    );
   }
 
   if (type === 'SET_TOR_MODE') {
@@ -232,8 +215,6 @@ self.addEventListener('fetch', event => {
   const url     = request.url;
 
   if (isEireneDomain(url)) return;
-  if (isNoiseDomain(url)) return;
-
   if (request.destination === 'beacon') {
     event.respondWith(new Response('', { status: 200, statusText: 'Blocked by Eirene' }));
     return;

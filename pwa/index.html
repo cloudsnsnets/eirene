@@ -267,23 +267,29 @@
 
     // -- Noise Check ----------------------------------------------------------
     async function measureNoise() {
+      let stream = null;
+      let ctx    = null;
       try {
-        const stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const ctx      = new AudioContext();
+        stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
+        ctx      = new AudioContext();
         const source   = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         source.connect(analyser);
+        // Bug #10 fix: wait for AudioContext to fill buffers before sampling
+        await new Promise(resolve => setTimeout(resolve, 100));
         const data = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
         const db  = Math.round(avg);
         noiseEl.textContent = `ambient noise: ${db} db`;
-        stream.getTracks().forEach(t => t.stop());
-        await ctx.close();
         return db;
       } catch (e) {
         return 0;
+      } finally {
+        // Always release microphone and audio context — even on exception
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (ctx)    ctx.close().catch(() => {});
       }
     }
 
@@ -470,8 +476,15 @@
         const data = await response.json();
         if (data.status === 'verified') {
           token = data.token;
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'SET_TOKEN', token: token });
+          // Use reg.active directly — controller can be null on first visit
+          // or after a SW update even when the SW is active and controlling
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            if (reg.active) {
+              reg.active.postMessage({ type: 'SET_TOKEN', token: token });
+            }
+          } catch(e) {
+            console.error('[eirene] Failed to send token to SW:', e);
           }
           setRing('open'); setMessage('Tunnel open.', 'success');
           ringIcon.textContent = '🔓';
