@@ -502,22 +502,21 @@
 
     // -- Session End ----------------------------------------------------------
     function sendSessionEnd() {
+      // In Tor mode — session persists across tab switches.
+      // User chose maximum privacy; we trust that decision.
+      // Session only ends on explicit browser close or hard expiry.
+      if (torMode) return;
+
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'SESSION_END' });
-      }
-      // Also disable Tor if active
-      if (torMode && token) {
-        fetch(PROXY_TOR_DISABLE_URL, {
-          method: 'POST',
-          headers: { 'X-Eirene-Auth': `Bearer ${token}` }
-        }).catch(() => {});
       }
     }
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         sendSessionEnd();
-        console.log('[eirene] Page hidden — session ended.');
+        if (!torMode) console.log('[eirene] Page hidden — session ended.');
+        else console.log('[eirene] Page hidden — Tor mode active, session kept.');
       }
     });
 
