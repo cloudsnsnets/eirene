@@ -268,7 +268,7 @@
       <div class="logo-sm">EIRENE</div>
       <p>Your private browser is ready.<br>Type a URL above and tap Go.</p>
     </div>
-    <iframe id="browser-frame" class="hidden" sandbox="allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"></iframe>
+    <iframe id="browser-frame" class="hidden" sandbox="allow-scripts allow-forms allow-popups"></iframe>
 
     <!-- Status bar -->
     <div id="status-bar">
@@ -418,6 +418,7 @@
       if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
       const blob = new Blob([html], { type: 'text/html' });
       currentBlobUrl = URL.createObjectURL(blob);
+      browserFrame.onload = injectTokenIntoLinks;
       browserFrame.src = currentBlobUrl;
       browserFrame.classList.remove('hidden');
       browserWelcome.classList.add('hidden');
@@ -462,6 +463,25 @@
         <div style="color:#e74c3c;">Could not load ${url}</div>
         <div style="color:#555;font-size:0.8rem;">Status: ${status || 'Network error'}</div>
       </body></html>`);
+    }
+
+    function injectTokenIntoLinks() {
+      if (!token) return;
+      try {
+        const doc = browserFrame.contentDocument;
+        if (!doc) return;
+        // Intercept all browse link clicks -- extract URL and navigate via parent
+        doc.querySelectorAll('a[href*="/browse?url="]').forEach(a => {
+          a.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              const targetUrl = new URL(this.href).searchParams.get('url');
+              if (targetUrl) navigate(decodeURIComponent(targetUrl));
+            } catch(err) {}
+          }, true);
+        });
+      } catch(e) {}
     }
 
     function startLoading() {
