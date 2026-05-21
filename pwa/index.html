@@ -179,6 +179,8 @@
       <div class="enroll-dot" id="edot-2"></div>
       <div class="enroll-dot" id="edot-3"></div>
     </div>
+    <input type="password" id="enroll-secret" placeholder="setup secret"
+      style="background:transparent;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;letter-spacing:0.1em;text-align:center;width:180px;outline:none;">
     <button class="btn enroll-btn" id="enroll-btn" onclick="enrollStep()">Record passphrase</button>
     <button class="btn" onclick="exitEnroll()">Cancel</button>
   </div>
@@ -222,7 +224,6 @@
   <script>
     // -- Config ---------------------------------------------------------------
     const VOICE_AUTH_URL        = '/voice-auth';
-    const PROXY_MODE_URL        = 'https://eirene-proxy.elizahome.com/mode';
     const PROXY_TOR_ENABLE_URL  = 'https://eirene-proxy.elizahome.com/tor/enable';
     const PROXY_TOR_DISABLE_URL = 'https://eirene-proxy.elizahome.com/tor/disable';
     const NOISE_LEVEL_THRESHOLD = 55;
@@ -413,6 +414,11 @@
 
     async function enrollStep() {
       if (recording) return;
+      const enrollSecret = document.getElementById('enroll-secret').value.trim();
+      if (!enrollSecret) {
+        setMessage('Enter setup secret first.', 'warning');
+        return;
+      }
       recording = true; enrollBtn.disabled = true;
       try {
         setRing('verifying'); setMessage('Checking environment…', 'enroll');
@@ -427,7 +433,9 @@
         const audioBlob = await recordAudio(RECORD_SECONDS);
         setRing('verifying'); setMessage('Saving voiceprint…', 'enroll');
         const response = await fetch(`${VOICE_AUTH_URL}/enroll`, {
-          method: 'POST', headers: { 'Content-Type': audioBlob.type }, body: audioBlob
+          method: 'POST',
+          headers: { 'Content-Type': audioBlob.type, 'X-Enroll-Secret': enrollSecret },
+          body: audioBlob
         });
         const data = await response.json();
         if (data.status === 'enrolled') {

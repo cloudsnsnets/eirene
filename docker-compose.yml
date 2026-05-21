@@ -11,7 +11,7 @@ name: eirene
 #
 # External ports (host):
 #   8081 → voice-auth (for testing only)
-#   3773 → proxy HTTP/CONNECT
+#   3773 → proxy HTTP/CONNECT + plain HTTP (port 8079)
 #   1081 → proxy SOCKS5
 #   8082 → PWA
 #
