@@ -314,9 +314,11 @@
     let recording   = false;
     let enrollCount = 0;
     let enrollMode  = false;
-    let torMode     = false;
-    let history     = [];
-    let historyIdx  = -1;
+    let torMode       = false;
+    let history       = [];
+    let historyIdx    = -1;
+    let currentBlobUrl = null;
+    let loadingTimer   = null;
 
     // -- Elements -------------------------------------------------------------
     const authScreen   = document.getElementById('auth-screen');
@@ -412,6 +414,15 @@
     }
 
     // -- Browser Navigation ---------------------------------------------------
+    function loadBlobInFrame(html) {
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      const blob = new Blob([html], { type: 'text/html' });
+      currentBlobUrl = URL.createObjectURL(blob);
+      browserFrame.src = currentBlobUrl;
+      browserFrame.classList.remove('hidden');
+      browserWelcome.classList.add('hidden');
+    }
+
     async function navigate(url) {
       url = url || addressBar.value.trim();
       if (!url) return;
@@ -426,24 +437,14 @@
           headers: { 'X-Eirene-Auth': `Bearer ${token}` }
         });
 
-        if (!resp.ok) {
-          showBrowseError(url, resp.status);
-          return;
-        }
+        if (!resp.ok) { showBrowseError(url, resp.status); return; }
 
         const finalUrl = resp.headers.get('X-Eirene-Final-URL') || url;
-        const html     = await resp.text();
-        const blob     = new Blob([html], { type: 'text/html' });
-        const blobUrl  = URL.createObjectURL(blob);
-
-        browserFrame.src = blobUrl;
-        browserFrame.classList.remove('hidden');
-        browserWelcome.classList.add('hidden');
+        loadBlobInFrame(await resp.text());
 
         addressBar.value = finalUrl;
         statusUrl.textContent = finalUrl;
 
-        // Update history
         history = history.slice(0, historyIdx + 1);
         history.push(finalUrl);
         historyIdx = history.length - 1;
@@ -456,27 +457,24 @@
     }
 
     function showBrowseError(url, status) {
-      const html = `<html><body style="font-family:system-ui;background:#0a0a0a;color:#e0e0e0;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:1rem;">
+      loadBlobInFrame(`<html><body style="font-family:system-ui;background:#0a0a0a;color:#e0e0e0;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:1rem;">
         <div style="font-size:2rem;">⚠️</div>
         <div style="color:#e74c3c;">Could not load ${url}</div>
         <div style="color:#555;font-size:0.8rem;">Status: ${status || 'Network error'}</div>
-      </body></html>`;
-      const blob = new Blob([html], { type: 'text/html' });
-      browserFrame.src = URL.createObjectURL(blob);
-      browserFrame.classList.remove('hidden');
-      browserWelcome.classList.add('hidden');
-      stopLoading();
+      </body></html>`);
     }
 
     function startLoading() {
+      clearTimeout(loadingTimer);
       loadingBar.style.width = '30%';
       loadingBar.className = torMode ? 'tor' : '';
-      setTimeout(() => loadingBar.style.width = '70%', 300);
+      loadingTimer = setTimeout(() => loadingBar.style.width = '70%', 300);
     }
 
     function stopLoading() {
+      clearTimeout(loadingTimer);
       loadingBar.style.width = '100%';
-      setTimeout(() => { loadingBar.style.width = '0%'; }, 400);
+      loadingTimer = setTimeout(() => { loadingBar.style.width = '0%'; }, 400);
     }
 
     function browserBack() {
@@ -510,6 +508,7 @@
       torIndicator.classList.remove('active');
       sbMode.textContent = 'standard';
       addressBar.value = '';
+      if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       browserFrame.src = 'about:blank';
       browserFrame.classList.add('hidden');
       browserWelcome.classList.remove('hidden');
@@ -670,7 +669,6 @@
           setRing('open'); setMessage('Tunnel open.', 'success');
           ringIcon.textContent = '🔓';
           setTunnelStatus(true);
-          // Switch to browser screen after brief pause
           setTimeout(() => showBrowserScreen(), 800);
         } else if (data.status === 'not_recognised') {
           setRing('error'); setMessage('Not recognised. Try again.', 'error');
@@ -707,12 +705,8 @@
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        if (!torMode) {
-          sendSessionEnd();
-          console.log('[eirene] Page hidden — session ended.');
-        } else {
-          console.log('[eirene] Page hidden — Tor mode active, session kept.');
-        }
+        if (!torMode) sendSessionEnd();
+        console.log(`[eirene] Page hidden — ${torMode ? 'Tor mode active, session kept.' : 'session ended.'}`);
       }
     });
 
@@ -736,14 +730,10 @@
       }
     });
 
-    // Handle navigation messages from iframe (intercepted links/forms)
     window.addEventListener('message', event => {
       if (event.data && event.data.type === 'EIRENE_NAV') {
         const url = event.data.url;
-        if (url && token) {
-          addressBar.value = url;
-          navigate(url);
-        }
+        if (url && token) navigate(url);
       }
     });
 
