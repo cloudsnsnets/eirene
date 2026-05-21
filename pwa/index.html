@@ -309,6 +309,9 @@
     const RECORD_SECONDS        = 3;
     const ENROLL_STEPS          = 3;
 
+    // -- Helpers -------------------------------------------------------------
+    const authHeaders = () => ({ 'X-Eirene-Auth': `Bearer ${token}` });
+
     // -- State ----------------------------------------------------------------
     let token       = null;
     let recording   = false;
@@ -435,7 +438,7 @@
       try {
         const browseUrl = `${BROWSE_URL}?url=${encodeURIComponent(url)}`;
         const resp = await fetch(browseUrl, {
-          headers: { 'X-Eirene-Auth': `Bearer ${token}` }
+          headers: authHeaders()
         });
 
         if (!resp.ok) { showBrowseError(url, resp.status); return; }
@@ -465,6 +468,16 @@
       </body></html>`);
     }
 
+    function setTorUiState(enabled) {
+      torMode = enabled;
+      torIndicator.classList.toggle('active', enabled);
+      sbMode.textContent = enabled ? 'tor' : 'standard';
+      addressBar.classList.toggle('tor-active', enabled);
+      loadingBar.className = enabled ? 'tor' : '';
+      if (navigator.serviceWorker.controller)
+        navigator.serviceWorker.controller.postMessage({ type: 'SET_TOR_MODE', enabled });
+    }
+
     function injectTokenIntoLinks() {
       if (!token) return;
       try {
@@ -477,7 +490,7 @@
             e.stopPropagation();
             try {
               const targetUrl = new URL(this.href).searchParams.get('url');
-              if (targetUrl) navigate(decodeURIComponent(targetUrl));
+              if (targetUrl) navigate(targetUrl);
             } catch(err) {}
           }, true);
         });
@@ -524,9 +537,7 @@
       browserScreen.classList.remove('visible');
       authScreen.classList.remove('hidden');
       token = null;
-      torMode = false;
-      torIndicator.classList.remove('active');
-      sbMode.textContent = 'standard';
+      setTorUiState(false);
       addressBar.value = '';
       if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
       browserFrame.src = 'about:blank';
@@ -550,18 +561,11 @@
       closeTorModal();
       try {
         const resp = await fetch(PROXY_TOR_ENABLE_URL, {
-          method: 'POST', headers: { 'X-Eirene-Auth': `Bearer ${token}` }
+          method: 'POST', headers: authHeaders()
         });
         const data = await resp.json();
         if (data.mode === 'tor') {
-          torMode = true;
-          torIndicator.classList.add('active');
-          sbMode.textContent = 'tor';
-          addressBar.classList.add('tor-active');
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'SET_TOR_MODE', enabled: true });
-          }
-          console.log('[eirene] Tor mode enabled.');
+          setTorUiState(true);
         }
       } catch(e) { console.error(e); }
     }
@@ -569,17 +573,11 @@
     async function disableTor() {
       try {
         const resp = await fetch(PROXY_TOR_DISABLE_URL, {
-          method: 'POST', headers: { 'X-Eirene-Auth': `Bearer ${token}` }
+          method: 'POST', headers: authHeaders()
         });
         const data = await resp.json();
         if (data.mode === 'standard') {
-          torMode = false;
-          torIndicator.classList.remove('active');
-          sbMode.textContent = 'standard';
-          addressBar.classList.remove('tor-active');
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'SET_TOR_MODE', enabled: false });
-          }
+          setTorUiState(false);
         }
       } catch(e) { console.error(e); }
     }
@@ -716,7 +714,7 @@
     // -- Session End ----------------------------------------------------------
     function sendSessionEnd() {
       if (torMode && token) {
-        fetch(PROXY_TOR_DISABLE_URL, { method: 'POST', headers: { 'X-Eirene-Auth': `Bearer ${token}` } }).catch(() => {});
+        fetch(PROXY_TOR_DISABLE_URL, { method: 'POST', headers: authHeaders() }).catch(() => {});
       }
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'SESSION_END' });
@@ -726,7 +724,6 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         // if (!torMode) sendSessionEnd(); -- disabled during v2 dev
-        console.log(`[eirene] Page hidden — ${torMode ? 'Tor mode active, session kept.' : 'session ended.'}`);
       }
     });
 
@@ -735,9 +732,7 @@
     // -- Init -----------------------------------------------------------------
     ring.addEventListener('click', authenticate);
 
-    const noiseWorker = new Worker('/noise-worker.js');
-    noiseWorker.onerror = e => console.error('[noise-worker] Error:', e);
-    console.log('[noise-worker] Started.');
+    new Worker('/noise-worker.js');
 
     registerWorkers().then(() => {
       noiseDot.style.opacity = '1';
@@ -753,7 +748,7 @@
     window.addEventListener('message', event => {
       if (event.data && event.data.type === 'EIRENE_NAV') {
         const url = event.data.url;
-        if (url && token) navigate(url);
+        if (url && token) navigate(url);  // url already decoded by postMessage sender
       }
     });
 
