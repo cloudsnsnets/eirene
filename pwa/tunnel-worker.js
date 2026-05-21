@@ -9,8 +9,16 @@
  * Cloud SNS Pty Ltd
  */
 
-const CACHE_NAME = 'eirene-v1';
-const PROXY_URL  = 'https://eirene-proxy.elizahome.com/fetch';
+const CACHE_NAME     = 'eirene-v1';
+const PROXY_BASE      = 'https://eirene.elizahome.com';
+const HOPPER_SSE_URL  = 'https://eirene.elizahome.com/sse';
+const HOPPER_PATH_URL = 'https://eirene.elizahome.com/current-path';
+
+// Current proxy path — updated by SSE from tunnel hopper
+// Persisted in SW cache — survives phone off, app close, reboot
+// Path is the Cloudflare route prefix e.g. /push/r2/sync/
+// Full fetch URL = PROXY_BASE + proxyPath + 'fetch'
+let proxyPath = '/';   // default — overwritten on first SSE connect
 
 // -- State --------------------------------------------------------------------
 let jwtToken  = null;
@@ -168,6 +176,91 @@ async function endSession() {
   allClients.forEach(client => client.postMessage({ type: 'SESSION_ENDED' }));
 }
 
+// -- Tunnel Hopper SSE Integration -------------------------------------------
+// EventSource is not available in SW scope — use fetch + ReadableStream instead
+
+async function loadPersistedPath() {
+  try {
+    const cache    = await caches.open(CACHE_NAME);
+    const response = await cache.match('/__eirene_proxy_path__');
+    if (response) {
+      proxyPath = await response.text();
+      console.log('[tunnel-worker] Loaded persisted proxy path:', proxyPath);
+    } else {
+      // Fetch current path from hopper on first run
+      const resp = await fetch(HOPPER_PATH_URL);
+      const data = await resp.json();
+      if (data.path) {
+        proxyPath = data.path;
+        console.log('[tunnel-worker] Fetched current proxy path:', proxyPath);
+      }
+    }
+  } catch (e) {
+    console.log('[tunnel-worker] Using default proxy path:', proxyPath);
+  }
+}
+
+async function persistPath(path) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put('/__eirene_proxy_path__',
+      new Response(path, { status: 200 })
+    );
+  } catch (e) {}
+}
+
+async function connectToHopper() {
+  // SW-compatible SSE via fetch + ReadableStream
+  // EventSource is a Window API — not available in Service Worker scope
+  try {
+    const response = await fetch(HOPPER_SSE_URL, {
+      headers: { 'Accept': 'text/event-stream' },
+      credentials: 'omit',
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`SSE connect failed: ${response.status}`);
+    }
+
+    const reader  = response.body.getReader();
+    const decoder = new TextDecoder();
+    let   buffer  = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('
+');
+      buffer = lines.pop();  // keep incomplete line
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        try {
+          const data = JSON.parse(line.slice(5).trim());
+          if (data.type === 'PATH_ROTATION' || data.type === 'PATH_CURRENT') {
+            proxyPath = data.path;
+            await persistPath(proxyPath);
+            console.log('[tunnel-worker] Proxy path updated:', proxyPath);
+            // Notify all clients
+            const allClients = await clients.matchAll({ includeUncontrolled: true });
+            allClients.forEach(c => c.postMessage({
+              type: 'TUNNEL_URL_UPDATED',
+              url:  `${PROXY_BASE}${proxyPath}`
+            }));
+          }
+        } catch (e) {
+          // Non-JSON line — skip
+        }
+      }
+    }
+  } catch (e) {
+    console.log('[tunnel-worker] SSE disconnected — reconnecting in 30s:', e.message);
+    setTimeout(connectToHopper, 30000);
+  }
+}
+
 // -- Install & Activate -------------------------------------------------------
 self.addEventListener('install', event => {
   console.log('[tunnel-worker] Installing...');
@@ -176,7 +269,12 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   console.log('[tunnel-worker] Active. Controlling all clients.');
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    clients.claim().then(() => {
+      // Load persisted proxy path then connect to hopper SSE
+      return loadPersistedPath().then(() => connectToHopper());
+    })
+  );
 });
 
 // -- Message Handler ----------------------------------------------------------
@@ -292,7 +390,7 @@ async function routeThroughProxy(request) {
       if (v) headers.set(h, v);
     }
 
-    const proxyResponse = await fetch(PROXY_URL, {
+    const proxyResponse = await fetch(`${PROXY_BASE}${proxyPath}fetch`, {
       method:      'POST',
       headers:     headers,
       body:        body || null,
