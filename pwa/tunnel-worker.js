@@ -10,9 +10,9 @@
  */
 
 const CACHE_NAME     = 'eirene-v1';
-const PROXY_BASE      = 'https://eirene.elizahome.com';
-const HOPPER_SSE_URL  = 'https://eirene.elizahome.com/sse';
-const HOPPER_PATH_URL = 'https://eirene.elizahome.com/current-path';
+const PROXY_BASE      = self.location.origin;
+const HOPPER_SSE_URL  = `${self.location.origin}/sse`;
+const HOPPER_PATH_URL = `${self.location.origin}/current-path`;
 
 // Current proxy path — updated by SSE from tunnel hopper
 // Persisted in SW cache — survives phone off, app close, reboot
@@ -152,7 +152,7 @@ function isDomainBlocked(url) {
 function isEireneDomain(url) {
   try {
     const hostname = new URL(url).hostname;
-    return hostname.endsWith('.elizahome.com') || hostname === 'elizahome.com';
+    return hostname === self.location.hostname;
   } catch (e) {}
   return false;
 }

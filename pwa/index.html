@@ -302,9 +302,9 @@
   <script>
     // -- Config ---------------------------------------------------------------
     const VOICE_AUTH_URL        = '/voice-auth';
-    const BROWSE_URL            = 'https://eirene.elizahome.com/browse';
-    const PROXY_TOR_ENABLE_URL  = 'https://eirene-proxy.elizahome.com/tor/enable';
-    const PROXY_TOR_DISABLE_URL = 'https://eirene-proxy.elizahome.com/tor/disable';
+    const BROWSE_URL            = `${window.location.origin}/browse`;
+    const PROXY_TOR_ENABLE_URL  = `${window.location.origin}/tor/enable`;
+    const PROXY_TOR_DISABLE_URL = `${window.location.origin}/tor/disable`;
     const NOISE_LEVEL_THRESHOLD = 55;
     const RECORD_SECONDS        = 3;
     const ENROLL_STEPS          = 3;
@@ -718,7 +718,7 @@
     browserFrame.addEventListener('load', () => {
       try {
         const frameUrl = browserFrame.contentWindow?.location?.href;
-        if (frameUrl && frameUrl.startsWith('https://eirene.elizahome.com/browse?url=')) {
+        if (frameUrl && frameUrl.includes('/browse?url=')) {
           const url = new URL(frameUrl).searchParams.get('url');
           if (url && token) {
             browserFrame.src = 'about:blank';
