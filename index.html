@@ -4,20 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Eirene — Private browsing. Ad-free. Your voice.</title>
+<meta name="description" content="Browse the web privately, without ads or trackers. Authenticated by your voice. Runs on your hardware. Free forever.">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=JetBrains+Mono:wght@300;400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap');
 
   :root {
-    --bg: #080808;
+    --bg: #070707;
     --fg: #e8e8e0;
-    --dim: #555;
+    --dim: #4a4a4a;
+    --dim2: #666;
     --accent: #c8b89a;
     --tor: #9b7fd4;
     --line: rgba(255,255,255,0.06);
+    --line2: rgba(255,255,255,0.03);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   html { scroll-behavior: smooth; }
 
   body {
@@ -28,251 +30,387 @@
     overflow-x: hidden;
   }
 
-  /* Grain overlay */
+  /* Grain */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
     pointer-events: none;
-    z-index: 100;
-    opacity: 0.4;
+    z-index: 999;
   }
 
-  /* Hero */
+  /* ── HERO ─────────────────────────────────────────────── */
   .hero {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4rem 2rem;
+    padding: 5rem 2rem 4rem;
     position: relative;
+    text-align: center;
   }
 
-  /* Radial glow */
-  .hero::after {
-    content: '';
+  .hero-glow {
     position: absolute;
-    top: 50%;
+    top: 40%;
     left: 50%;
-    transform: translate(-50%, -60%);
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(ellipse, rgba(200,184,154,0.04) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(ellipse, rgba(200,184,154,0.035) 0%, transparent 65%);
     pointer-events: none;
   }
 
   .greek {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
-    color: var(--dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.5em;
+    color: var(--dim2);
     text-transform: uppercase;
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
     opacity: 0;
-    animation: fadeUp 1s ease forwards 0.2s;
+    animation: up 1s ease forwards 0.2s;
   }
 
   .wordmark {
-    font-size: clamp(5rem, 15vw, 11rem);
+    font-size: clamp(5rem, 18vw, 12rem);
     font-weight: 300;
     letter-spacing: -0.02em;
-    line-height: 1;
+    line-height: 0.9;
     color: var(--fg);
     opacity: 0;
-    animation: fadeUp 1s ease forwards 0.4s;
+    animation: up 1.2s ease forwards 0.4s;
   }
 
-  .tagline {
+  .hero-sub {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     letter-spacing: 0.25em;
-    color: var(--dim);
-    margin-top: 1.5rem;
+    color: var(--dim2);
+    margin-top: 1.75rem;
+    text-transform: uppercase;
     opacity: 0;
-    animation: fadeUp 1s ease forwards 0.6s;
+    animation: up 1s ease forwards 0.7s;
   }
 
-  .divider {
+  .hero-rule {
     width: 1px;
-    height: 4rem;
-    background: linear-gradient(to bottom, var(--accent), transparent);
+    height: 5rem;
+    background: linear-gradient(to bottom, rgba(200,184,154,0.4), transparent);
     margin: 3rem auto;
     opacity: 0;
-    animation: fadeUp 1s ease forwards 0.8s;
+    animation: up 1s ease forwards 0.9s;
   }
 
-  .pitch {
-    max-width: 520px;
-    text-align: center;
-    font-size: 1.35rem;
+  .hero-pitch {
+    max-width: 560px;
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
     font-weight: 300;
-    line-height: 1.8;
-    color: rgba(232,232,224,0.7);
+    line-height: 1.85;
+    color: rgba(232,232,224,0.65);
     opacity: 0;
-    animation: fadeUp 1s ease forwards 1s;
+    animation: up 1s ease forwards 1.1s;
   }
 
-  .pitch em {
+  .hero-pitch em {
     color: var(--accent);
-    font-style: normal;
+    font-style: italic;
   }
 
-  /* CTA */
-  .cta-group {
+  .hero-cta {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
     margin-top: 3.5rem;
     opacity: 0;
-    animation: fadeUp 1s ease forwards 1.2s;
+    animation: up 1s ease forwards 1.3s;
   }
 
-  .btn-primary {
+  .btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     background: var(--accent);
-    color: #080808;
+    color: #070707;
     text-decoration: none;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     letter-spacing: 0.15em;
-    padding: 1rem 2.5rem;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
+    padding: 1rem 2.75rem;
     text-transform: uppercase;
+    transition: all 0.25s;
+    font-weight: 400;
   }
+  .btn:hover { background: var(--fg); transform: translateY(-2px); }
 
-  .btn-primary:hover {
-    background: var(--fg);
-    transform: translateY(-2px);
-  }
-
-  .btn-secondary {
+  .btn-ghost {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     letter-spacing: 0.2em;
-    color: var(--dim);
+    color: var(--dim2);
     text-decoration: none;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 2px;
     text-transform: uppercase;
-    transition: color 0.2s;
+    border-bottom: 1px solid var(--dim);
+    padding-bottom: 2px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .btn-ghost:hover { color: var(--fg); border-color: var(--fg); }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    animation: up 1s ease forwards 2s;
+  }
+  .scroll-hint span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.4em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+  .scroll-line {
+    width: 1px;
+    height: 2.5rem;
+    background: linear-gradient(to bottom, var(--dim), transparent);
+    animation: pulse 2s ease infinite;
   }
 
-  .btn-secondary:hover { color: var(--fg); }
-
-  /* How it works */
-  .section {
-    max-width: 900px;
+  /* ── STORY ────────────────────────────────────────────── */
+  .story {
+    max-width: 680px;
     margin: 0 auto;
-    padding: 6rem 2rem;
+    padding: 8rem 2rem;
     border-top: 1px solid var(--line);
+  }
+
+  .story-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.5em;
+    color: var(--dim2);
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+
+  .story p {
+    font-size: clamp(1.2rem, 2.2vw, 1.5rem);
+    font-weight: 300;
+    line-height: 1.9;
+    color: rgba(232,232,224,0.6);
+    margin-bottom: 1.75rem;
+  }
+
+  .story p strong {
+    color: var(--fg);
+    font-weight: 400;
+  }
+
+  .story p em {
+    color: var(--accent);
+    font-style: italic;
+  }
+
+  .story-pull {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--fg);
+    border-left: 2px solid var(--accent);
+    padding-left: 2rem;
+    margin: 3rem 0;
+    font-style: italic;
+  }
+
+  /* ── HOW ──────────────────────────────────────────────── */
+  .how {
+    border-top: 1px solid var(--line);
+    padding: 8rem 2rem;
+  }
+
+  .how-inner {
+    max-width: 1000px;
+    margin: 0 auto;
   }
 
   .section-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.4em;
-    color: var(--dim);
+    font-size: 0.6rem;
+    letter-spacing: 0.5em;
+    color: var(--dim2);
     text-transform: uppercase;
-    margin-bottom: 3rem;
+    margin-bottom: 4rem;
+    text-align: center;
   }
 
-  .steps {
+  .how-steps {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--line);
   }
 
-  .step {
+  .how-step {
+    background: var(--bg);
+    padding: 2.5rem 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .how-step:hover { background: rgba(255,255,255,0.015); }
+
+  .how-step::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -0.5rem;
+    right: 1rem;
+    font-size: 6rem;
+    font-weight: 300;
+    color: rgba(255,255,255,0.02);
+    font-family: 'Cormorant Garamond', serif;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .how-icon {
+    font-size: 1.75rem;
+    margin-bottom: 1.25rem;
+    display: block;
+  }
+
+  .how-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--fg);
+    margin-bottom: 0.75rem;
+  }
+
+  .how-body {
+    font-size: 1.05rem;
+    font-weight: 300;
+    line-height: 1.75;
+    color: rgba(232,232,224,0.45);
+  }
+
+  /* ── FEATURES ─────────────────────────────────────────── */
+  .features {
+    border-top: 1px solid var(--line);
+    padding: 8rem 2rem;
+    background: var(--line2);
+  }
+
+  .features-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+  }
+
+  .feat {
     padding: 2rem;
     border: 1px solid var(--line);
-    position: relative;
     transition: border-color 0.3s;
   }
+  .feat:hover { border-color: rgba(200,184,154,0.2); }
 
-  .step:hover { border-color: rgba(200,184,154,0.2); }
+  .feat-icon { font-size: 1.5rem; margin-bottom: 1rem; }
 
-  .step-num {
+  .feat-name {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.3em;
+    font-size: 0.68rem;
+    letter-spacing: 0.25em;
     color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .feat-desc {
+    font-size: 1.05rem;
+    font-weight: 300;
+    line-height: 1.7;
+    color: rgba(232,232,224,0.45);
+  }
+
+  .feat-desc strong { color: rgba(232,232,224,0.7); font-weight: 400; }
+
+  /* ── TOR ──────────────────────────────────────────────── */
+  .tor-section {
+    border-top: 1px solid var(--line);
+    padding: 8rem 2rem;
+  }
+
+  .tor-inner {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .tor-card {
+    border: 1px solid rgba(155,127,212,0.2);
+    padding: 3rem;
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    background: rgba(155,127,212,0.02);
+  }
+
+  .tor-emoji { font-size: 2.5rem; flex-shrink: 0; }
+
+  .tor-content h3 {
+    font-size: 1.75rem;
+    font-weight: 300;
+    color: var(--tor);
     margin-bottom: 1rem;
   }
 
-  .step-title {
-    font-size: 1.4rem;
-    font-weight: 400;
-    margin-bottom: 0.75rem;
-    color: var(--fg);
-  }
-
-  .step-body {
-    font-size: 1rem;
+  .tor-content p {
+    font-size: 1.1rem;
     font-weight: 300;
-    line-height: 1.7;
+    line-height: 1.8;
     color: rgba(232,232,224,0.5);
-  }
-
-  /* Features */
-  .features {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-    margin-top: 4rem;
-  }
-
-  .feature {
-    background: var(--bg);
-    padding: 2rem 1.5rem;
-  }
-
-  .feature-icon {
-    font-size: 1.5rem;
     margin-bottom: 0.75rem;
   }
 
-  .feature-name {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
+  .tor-content p strong { color: var(--tor); font-weight: 400; }
 
-  .feature-desc {
-    font-size: 0.95rem;
-    font-weight: 300;
-    color: rgba(232,232,224,0.5);
-    line-height: 1.6;
-  }
-
-  /* Requirements */
-  .requirements {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 6rem 2rem;
+  /* ── REQUIREMENTS ─────────────────────────────────────── */
+  .reqs {
     border-top: 1px solid var(--line);
+    padding: 8rem 2rem;
+  }
+
+  .reqs-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .reqs-intro {
+    max-width: 560px;
+    font-size: 1.2rem;
+    font-weight: 300;
+    line-height: 1.8;
+    color: rgba(232,232,224,0.5);
+    margin: 0 auto 3rem;
+    text-align: center;
   }
 
   .req-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-top: 2rem;
-  }
-
-  @media (max-width: 600px) {
-    .req-grid { grid-template-columns: 1fr; }
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
   }
 
   .req-card {
@@ -282,45 +420,74 @@
 
   .req-title {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.3em;
-    color: var(--dim);
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    color: var(--dim2);
     text-transform: uppercase;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
   }
 
-  .req-list {
-    list-style: none;
-    font-size: 1rem;
+  .req-list { list-style: none; }
+
+  .req-list li {
+    font-size: 1.05rem;
     font-weight: 300;
-    color: rgba(232,232,224,0.6);
-    line-height: 2;
+    color: rgba(232,232,224,0.55);
+    line-height: 1;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
+  .req-list li:last-child { border-bottom: none; }
 
   .req-list li::before {
-    content: '→  ';
+    content: '→';
     color: var(--accent);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    flex-shrink: 0;
   }
 
-  /* Install section */
+  .req-note {
+    font-size: 0.85rem;
+    color: var(--dim2);
+    font-style: italic;
+  }
+
+  /* ── INSTALL ──────────────────────────────────────────── */
   .install {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 6rem 2rem;
     border-top: 1px solid var(--line);
+    padding: 8rem 2rem;
+    background: var(--line2);
   }
 
-  .install-options {
+  .install-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .install-intro {
+    max-width: 560px;
+    font-size: 1.2rem;
+    font-weight: 300;
+    line-height: 1.8;
+    color: rgba(232,232,224,0.5);
+    margin: 0 auto 4rem;
+    text-align: center;
+  }
+
+  .install-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
-    margin-top: 3rem;
   }
 
-  @media (max-width: 600px) {
-    .install-options { grid-template-columns: 1fr; }
+  @media (max-width: 640px) {
+    .install-grid { grid-template-columns: 1fr; }
+    .req-grid { grid-template-columns: 1fr; }
+    .tor-card { flex-direction: column; }
   }
 
   .install-card {
@@ -331,162 +498,144 @@
     gap: 1.5rem;
   }
 
-  .install-card.featured {
-    border-color: rgba(200,184,154,0.3);
-  }
+  .install-card.featured { border-color: rgba(200,184,154,0.25); }
 
   .install-os {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     letter-spacing: 0.4em;
-    color: var(--dim);
+    color: var(--dim2);
     text-transform: uppercase;
   }
 
-  .install-title {
-    font-size: 1.6rem;
-    font-weight: 300;
-  }
+  .install-title { font-size: 1.75rem; font-weight: 300; }
 
   .install-steps {
     list-style: none;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 300;
-    color: rgba(232,232,224,0.55);
-    line-height: 2;
+    color: rgba(232,232,224,0.45);
+    line-height: 1;
   }
+
+  .install-steps li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .install-steps li:last-child { border-bottom: none; }
 
   .install-steps li span {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--dim);
-    margin-right: 0.5rem;
+    font-size: 0.65rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 2px;
   }
 
   .code-block {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.025);
     border: 1px solid var(--line);
     padding: 1rem 1.25rem;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: var(--accent);
-    letter-spacing: 0.02em;
     cursor: pointer;
     position: relative;
     transition: background 0.2s;
+    word-break: break-all;
   }
+  .code-block:hover { background: rgba(200,184,154,0.04); }
 
-  .code-block:hover { background: rgba(200,184,154,0.05); }
-
-  .code-block .copy-hint {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.6rem;
+  .copy-hint {
+    display: block;
+    font-size: 0.55rem;
     color: var(--dim);
     letter-spacing: 0.2em;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
   }
 
-  /* Tor section */
-  .tor-note {
-    margin-top: 3rem;
-    padding: 2rem;
-    border: 1px solid rgba(155,127,212,0.2);
-    display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
+  /* ── FREE FOREVER ─────────────────────────────────────── */
+  .free {
+    border-top: 1px solid var(--line);
+    padding: 8rem 2rem;
+    text-align: center;
   }
 
-  .tor-icon { font-size: 1.5rem; }
+  .free-inner { max-width: 560px; margin: 0 auto; }
 
-  .tor-text {
-    font-size: 1rem;
+  .free h2 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
     font-weight: 300;
-    line-height: 1.7;
-    color: rgba(232,232,224,0.55);
+    margin-bottom: 2rem;
+    line-height: 1.2;
   }
 
-  .tor-text strong {
-    color: var(--tor);
-    font-weight: 400;
+  .free h2 em { color: var(--accent); font-style: italic; }
+
+  .free p {
+    font-size: 1.2rem;
+    font-weight: 300;
+    line-height: 1.85;
+    color: rgba(232,232,224,0.5);
+    margin-bottom: 1.25rem;
   }
 
-  /* Footer */
+  .free p strong { color: var(--fg); font-weight: 400; }
+
+  /* ── FOOTER ───────────────────────────────────────────── */
   footer {
     border-top: 1px solid var(--line);
-    padding: 3rem 2rem;
+    padding: 4rem 2rem;
     text-align: center;
   }
 
   .footer-greek {
-    font-size: 1.5rem;
+    font-size: 2rem;
     font-weight: 300;
     color: var(--dim);
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
   }
 
   .footer-copy {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     letter-spacing: 0.3em;
-    color: rgba(85,85,85,0.6);
+    color: rgba(74,74,74,0.6);
     text-transform: uppercase;
+    margin-bottom: 1.5rem;
   }
 
   .footer-links {
     display: flex;
     justify-content: center;
-    gap: 2rem;
-    margin-top: 1.5rem;
+    gap: 2.5rem;
+    flex-wrap: wrap;
   }
 
   .footer-links a {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
     color: var(--dim);
     text-decoration: none;
     text-transform: uppercase;
     transition: color 0.2s;
   }
-
   .footer-links a:hover { color: var(--fg); }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  /* ── ANIMATIONS ───────────────────────────────────────── */
+  @keyframes up {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* Scroll indicator */
-  .scroll-hint {
-    position: absolute;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.4em;
-    color: var(--dim);
-    text-transform: uppercase;
-    opacity: 0;
-    animation: fadeUp 1s ease forwards 1.8s;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .scroll-line {
-    width: 1px;
-    height: 2rem;
-    background: linear-gradient(to bottom, var(--dim), transparent);
-    animation: scrollPulse 2s ease infinite;
-  }
-
-  @keyframes scrollPulse {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.2; }
+    50%       { opacity: 0.8; }
   }
 </style>
 </head>
@@ -494,172 +643,228 @@
 
 <!-- HERO -->
 <section class="hero">
-  <div class="greek">εἰρήνη — peace</div>
+  <div class="hero-glow"></div>
+  <p class="greek">εἰρήνη &nbsp;—&nbsp; peace</p>
   <h1 class="wordmark">Eirene</h1>
-  <p class="tagline">Private browsing &nbsp;·&nbsp; Ad-free &nbsp;·&nbsp; Your voice</p>
-  <div class="divider"></div>
-  <p class="pitch">
+  <p class="hero-sub">Private browsing &nbsp;·&nbsp; Ad-free &nbsp;·&nbsp; Your voice</p>
+  <div class="hero-rule"></div>
+  <p class="hero-pitch">
     Browse normally. When you need privacy —
-    open a new tab. Speak your passphrase.
-    Browse <em>without ads</em>, without trackers,
+    open a new tab. <em>Speak your passphrase.</em>
+    Browse without ads, without trackers,
     without being watched.
   </p>
-  <div class="cta-group">
-    <a href="eirene-install.bat" class="btn-primary" download>
-      ⊞ &nbsp; Download for Windows
-    </a>
-    <a href="#install" class="btn-secondary">Linux / Mac →</a>
+  <div class="hero-cta">
+    <a href="eirene-install.bat" class="btn" download>⊞ &nbsp; Download for Windows</a>
+    <a href="#install" class="btn-ghost">Linux / Mac →</a>
   </div>
   <div class="scroll-hint">
-    <span>Learn more</span>
+    <span>The story</span>
     <div class="scroll-line"></div>
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="section">
-  <div class="section-label">How it works</div>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">01</div>
-      <div class="step-title">Install</div>
-      <div class="step-body">One command on your home server or PC. Docker handles everything.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">02</div>
-      <div class="step-title">Enroll</div>
-      <div class="step-body">Record your passphrase three times. Your voice is your key. Nothing else.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">03</div>
-      <div class="step-title">Browse</div>
-      <div class="step-body">Open Eirene in any tab. Speak. Browse without ads or trackers.</div>
-    </div>
-    <div class="step">
-      <div class="step-num">04</div>
-      <div class="step-title">Lock</div>
-      <div class="step-body">Tap Lock when done. Session wiped. Cache cleared. It never happened.</div>
-    </div>
+<!-- STORY -->
+<section class="story">
+  <p class="story-label">Why we built this</p>
+
+  <p>Your browser is watching you. Every site you visit, every search you make, every article you read — <strong>it's being recorded, sold, and used to build a profile of who you are.</strong> Not by hackers. By the companies whose services you use every day.</p>
+
+  <p>Ad networks follow you across thousands of websites. Your internet provider can see every domain you visit. Even "private mode" doesn't actually make you private — it just forgets your history on your own device.</p>
+
+  <div class="story-pull">
+    "We just wanted to read the news without being followed around the internet for the next two weeks by an ad for something we glanced at once."
   </div>
 
-  <div class="features">
-    <div class="feature">
-      <div class="feature-icon">🎙️</div>
-      <div class="feature-name">Voice Auth</div>
-      <div class="feature-desc">No passwords. Your voiceprint opens the door.</div>
+  <p>So we built Eirene. <strong>A clean room you walk into when you need one.</strong> Your voice opens the door. No passwords to forget. No accounts to create. No company holding your data. When you leave and lock the door — <em>it never happened.</em></p>
+
+  <p>It runs on your own computer. Your browsing goes through your own tunnel. We never see it. Nobody does.</p>
+
+  <p>It's free. It's open source. It always will be.</p>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how">
+  <div class="how-inner">
+    <p class="section-label">How it works</p>
+    <div class="how-steps">
+      <div class="how-step" data-num="1">
+        <span class="how-icon">🛠️</span>
+        <h3 class="how-title">Install once</h3>
+        <p class="how-body">One command on your home computer. Eirene sets up everything — the tunnel, the proxy, the voice server. Takes about two minutes.</p>
+      </div>
+      <div class="how-step" data-num="2">
+        <span class="how-icon">🎙️</span>
+        <h3 class="how-title">Record your voice</h3>
+        <p class="how-body">Say your passphrase three times. That's your key. No passwords. No accounts. No one else can open your room.</p>
+      </div>
+      <div class="how-step" data-num="3">
+        <span class="how-icon">🚪</span>
+        <h3 class="how-title">Open when needed</h3>
+        <p class="how-body">Browse normally all day. When you want privacy, open a new tab, go to your Eirene address, and speak. The room opens.</p>
+      </div>
+      <div class="how-step" data-num="4">
+        <span class="how-icon">🔒</span>
+        <h3 class="how-title">Lock when done</h3>
+        <p class="how-body">Tap Lock. Your session is wiped. Cache cleared. Tokens gone. The room never existed.</p>
+      </div>
     </div>
-    <div class="feature">
-      <div class="feature-icon">🚫</div>
-      <div class="feature-name">Ad Blocking</div>
-      <div class="feature-desc">100+ ad domains blocked at the tunnel level.</div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="features-inner">
+    <p class="section-label">What Eirene does for you</p>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-icon">🚫</div>
+        <p class="feat-name">No ads</p>
+        <p class="feat-desc">Over <strong>100 ad networks</strong> blocked at the tunnel level — before they ever reach your screen. Not hidden, not filtered. Gone.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">👁️</div>
+        <p class="feat-name">No trackers</p>
+        <p class="feat-desc">Tracking pixels stripped. Identifying parameters removed from URLs. The invisible surveillance layer — <strong>peeled off</strong>.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔐</div>
+        <p class="feat-name">Private DNS</p>
+        <p class="feat-desc">Every domain lookup goes through <strong>encrypted DNS</strong>. Your internet provider can't see what sites you visit. Neither can anyone on your network.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🎙️</div>
+        <p class="feat-name">Voice authentication</p>
+        <p class="feat-desc">Your voiceprint is your key. Stored on your machine. Never uploaded. <strong>Nobody else can open your room</strong> — not even us.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🏠</div>
+        <p class="feat-name">Self-hosted</p>
+        <p class="feat-desc">Eirene runs on <strong>your hardware</strong>. Your data flows through your tunnel. We have no servers in the middle. There's nothing to subpoena.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🌐</div>
+        <p class="feat-name">Full web access</p>
+        <p class="feat-desc">Browse any website, click any link, navigate freely. <strong>The whole web</strong> — just without the surveillance layer on top.</p>
+      </div>
     </div>
-    <div class="feature">
-      <div class="feature-icon">👁️</div>
-      <div class="feature-name">No Trackers</div>
-      <div class="feature-desc">PHI stripped. Tracking params removed.</div>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🔒</div>
-      <div class="feature-name">Private DNS</div>
-      <div class="feature-desc">DNS-over-HTTPS via Cloudflare. No leaks.</div>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🧅</div>
-      <div class="feature-name">Tor Mode</div>
-      <div class="feature-desc">One tap. Full anonymity. Slower but invisible.</div>
-    </div>
-    <div class="feature">
-      <div class="feature-icon">🏠</div>
-      <div class="feature-name">Self-hosted</div>
-      <div class="feature-desc">Runs on your hardware. You own the data.</div>
+  </div>
+</section>
+
+<!-- TOR -->
+<section class="tor-section">
+  <div class="tor-inner">
+    <p class="section-label">When you need more</p>
+    <div class="tor-card">
+      <div class="tor-emoji">🧅</div>
+      <div class="tor-content">
+        <h3>Tor mode</h3>
+        <p>For when you need more than just ad-free. One tap routes all your traffic through the <strong>Tor network</strong> — multiple encrypted hops across the globe.</p>
+        <p>Websites see a Tor exit node. Not you. Not your city. Not your country. <strong>Nothing.</strong></p>
+        <p>It's slower — Tor always is. But sometimes that's the right tradeoff. You decide, tap by tap.</p>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- REQUIREMENTS -->
-<section class="requirements">
-  <div class="section-label">What you need</div>
-  <div class="req-grid">
-    <div class="req-card">
-      <div class="req-title">Your machine</div>
-      <ul class="req-list">
-        <li>Windows 10/11, Linux, or Mac</li>
-        <li>Docker Desktop (free)</li>
-        <li>4GB RAM minimum</li>
-        <li>Always-on recommended</li>
-      </ul>
-    </div>
-    <div class="req-card">
-      <div class="req-title">Cloudflare (free)</div>
-      <ul class="req-list">
-        <li>Cloudflare account (free)</li>
-        <li>A domain (~$10/year)</li>
-        <li>API token (the script guides you)</li>
-        <li>Cloudflare Tunnel (free)</li>
-      </ul>
+<section class="reqs">
+  <div class="reqs-inner">
+    <p class="section-label">What you need</p>
+    <p class="reqs-intro">Eirene runs on hardware you already own. No monthly fees. No cloud subscriptions. Just your computer and a domain name.</p>
+    <div class="req-grid">
+      <div class="req-card">
+        <p class="req-title">Your computer</p>
+        <ul class="req-list">
+          <li>Windows 10 or 11</li>
+          <li>Linux or Mac also work</li>
+          <li>4 GB RAM minimum</li>
+          <li>Docker Desktop <span class="req-note">(free)</span></li>
+          <li>Always-on recommended</li>
+        </ul>
+      </div>
+      <div class="req-card">
+        <p class="req-title">Cloudflare account</p>
+        <ul class="req-list">
+          <li>Cloudflare account <span class="req-note">(free)</span></li>
+          <li>A domain name <span class="req-note">(~$10/year)</span></li>
+          <li>Cloudflare Tunnel <span class="req-note">(free)</span></li>
+          <li>The setup wizard guides you</li>
+        </ul>
+      </div>
+      <div class="req-card">
+        <p class="req-title">That's it</p>
+        <ul class="req-list">
+          <li>No monthly subscription</li>
+          <li>No account with us</li>
+          <li>No data sent to our servers</li>
+          <li>No credit card</li>
+        </ul>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- INSTALL -->
 <section class="install" id="install">
-  <div class="section-label">Install</div>
-  <div class="install-options">
-
-    <div class="install-card featured">
-      <div class="install-os">Windows 10 / 11</div>
-      <div class="install-title">One-click installer</div>
-      <ol class="install-steps">
-        <li><span>1.</span> Download Docker Desktop</li>
-        <li><span>2.</span> Download the installer below</li>
-        <li><span>3.</span> Double-click — done</li>
-      </ol>
-      <a href="eirene-install.bat" class="btn-primary" download>
-        ⊞ &nbsp; Download Installer
-      </a>
-    </div>
-
-    <div class="install-card">
-      <div class="install-os">Linux / Mac / WSL2</div>
-      <div class="install-title">One command</div>
-      <ol class="install-steps">
-        <li><span>1.</span> Install Docker</li>
-        <li><span>2.</span> Open terminal</li>
-        <li><span>3.</span> Run:</li>
-      </ol>
-      <div class="code-block" onclick="copyCmd(this)">
-        curl -sSL https://eirene.run.place/setup | bash
-        <span class="copy-hint">click to copy</span>
+  <div class="install-inner">
+    <p class="section-label">Get started</p>
+    <p class="install-intro">The setup wizard walks you through everything. It takes about five minutes and asks you three questions.</p>
+    <div class="install-grid">
+      <div class="install-card featured">
+        <p class="install-os">Windows 10 / 11</p>
+        <h3 class="install-title">One-click installer</h3>
+        <ol class="install-steps">
+          <li><span>1</span> Install Docker Desktop (free)</li>
+          <li><span>2</span> Download the installer below</li>
+          <li><span>3</span> Double-click and follow the prompts</li>
+          <li><span>4</span> Open your Eirene URL and speak</li>
+        </ol>
+        <a href="eirene-install.bat" class="btn" download>⊞ &nbsp; Download Installer</a>
+      </div>
+      <div class="install-card">
+        <p class="install-os">Linux / Mac / WSL2</p>
+        <h3 class="install-title">One command</h3>
+        <ol class="install-steps">
+          <li><span>1</span> Install Docker</li>
+          <li><span>2</span> Open a terminal</li>
+          <li><span>3</span> Run this command:</li>
+        </ol>
+        <div class="code-block" onclick="copyCmd(this)">
+          curl -sSL https://eirene.run.place/setup -o setup.sh && bash setup.sh
+          <span class="copy-hint">click to copy</span>
+        </div>
       </div>
     </div>
-
   </div>
+</section>
 
-  <div class="tor-note">
-    <div class="tor-icon">🧅</div>
-    <div class="tor-text">
-      <strong>Tor mode</strong> is built in. After authenticating,
-      tap the onion icon to route all traffic through Tor.
-      Slower — but your IP is invisible. One tap to enable,
-      one tap to disable.
-    </div>
+<!-- FREE FOREVER -->
+<section class="free">
+  <div class="free-inner">
+    <h2>Free. <em>Forever.</em></h2>
+    <p>Eirene is open source. The code is on GitHub. Anyone can read it, audit it, improve it, or run it.</p>
+    <p><strong>We will never charge for Eirene.</strong> No premium tier. No "free with limits." No advertising. No selling your data — we don't have your data.</p>
+    <p>Privacy shouldn't be a luxury. It should be something anyone can have, on hardware they already own, with software they can inspect.</p>
+    <p>That's what Eirene is. That's what it will always be.</p>
   </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-greek">εἰρήνη</div>
-  <div class="footer-copy">Cloud SNS Pty Ltd &nbsp;·&nbsp; Free. Forever.</div>
+  <p class="footer-greek">εἰρήνη</p>
+  <p class="footer-copy">Cloud SNS Pty Ltd &nbsp;·&nbsp; Open source &nbsp;·&nbsp; Free forever</p>
   <div class="footer-links">
     <a href="https://github.com/cloudsnsnets/eirene">GitHub</a>
     <a href="https://github.com/cloudsnsnets/eirene/issues">Support</a>
     <a href="https://github.com/cloudsnsnets/eirene/blob/main/LICENSE">License</a>
+    <a href="https://github.com/cloudsnsnets/eirene/releases">Releases</a>
   </div>
 </footer>
 
 <script>
 function copyCmd(el) {
-  const text = el.textContent.replace('click to copy', '').trim();
+  const text = el.childNodes[0].textContent.trim();
   navigator.clipboard.writeText(text).then(() => {
     const hint = el.querySelector('.copy-hint');
     hint.textContent = 'copied!';
