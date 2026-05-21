@@ -582,10 +582,11 @@
       }
     }
 
-    function showTabWarning() {
+    function showTabWarning(count) {
+      const n = (count && count > 1) ? count - 1 : 'other';
       setRing('error');
       ringIcon.textContent = '⚠️';
-      setMessage('Other tabs detected. Close browser. Reopen. Do not restore tabs.', 'warning');
+      setMessage(`${n} other tab${n !== 1 ? 's' : ''} detected. Close browser. Reopen. Do not restore tabs.`, 'warning');
       setTimeout(() => {
         setRing('idle');
         ringIcon.textContent = '🎙️';

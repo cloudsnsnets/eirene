@@ -451,7 +451,6 @@ const NOISE_URLS = [
   'https://www.xe.com/currencyconverter/',
   'https://www.oanda.com/currency-converter/',
   'https://www.calculator.net/',
-  'https://www.wolframalpha.com/',
   'https://www.convertunits.com/',
   'https://www.metric-conversions.org/',
   'https://postninja.com.au/',
@@ -610,19 +609,6 @@ function pickMethod() {
   return Math.random() < 0.15 ? 'HEAD' : 'GET';  // 85% GET, 15% HEAD
 }
 
-// ── Rotate user agents — look like real browsers ──────────────────────────────
-const USER_AGENTS = [
-  'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-  'Mozilla/5.0 (Linux; Android 12; Samsung Galaxy S21) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Mobile Safari/537.36',
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-  'Mozilla/5.0 (Linux; Android 11; Redmi Note 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Mobile Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-];
-
-function pickUserAgent() {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
 // ── Noise fetch ───────────────────────────────────────────────────────────────
 async function makeNoise() {
   const url    = NOISE_URLS[Math.floor(Math.random() * NOISE_URLS.length)];
@@ -642,7 +628,6 @@ async function makeNoise() {
       headers: {
         'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-AU,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
       }
     });
 
