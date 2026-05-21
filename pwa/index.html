@@ -268,7 +268,7 @@
       <div class="logo-sm">EIRENE</div>
       <p>Your private browser is ready.<br>Type a URL above and tap Go.</p>
     </div>
-    <iframe id="browser-frame" class="hidden" sandbox="allow-scripts allow-forms allow-popups"></iframe>
+    <iframe id="browser-frame" class="hidden" sandbox="allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"></iframe>
 
     <!-- Status bar -->
     <div id="status-bar">
@@ -302,7 +302,7 @@
   <script>
     // -- Config ---------------------------------------------------------------
     const VOICE_AUTH_URL        = '/voice-auth';
-    const BROWSE_URL            = 'https://eirene-proxy.elizahome.com/browse';
+    const BROWSE_URL            = 'https://eirene.elizahome.com/browse';
     const PROXY_TOR_ENABLE_URL  = 'https://eirene-proxy.elizahome.com/tor/enable';
     const PROXY_TOR_DISABLE_URL = 'https://eirene-proxy.elizahome.com/tor/disable';
     const NOISE_LEVEL_THRESHOLD = 55;
@@ -705,12 +705,12 @@
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        if (!torMode) sendSessionEnd();
+        // if (!torMode) sendSessionEnd(); -- disabled during v2 dev
         console.log(`[eirene] Page hidden — ${torMode ? 'Tor mode active, session kept.' : 'session ended.'}`);
       }
     });
 
-    window.addEventListener('beforeunload', () => { sendSessionEnd(); });
+    // window.addEventListener('beforeunload', () => { sendSessionEnd(); }); -- disabled during v2 dev
 
     // -- Init -----------------------------------------------------------------
     ring.addEventListener('click', authenticate);
@@ -735,6 +735,20 @@
         const url = event.data.url;
         if (url && token) navigate(url);
       }
+    });
+
+    // Intercept iframe navigation attempts -- catch target="_parent" link clicks
+    browserFrame.addEventListener('load', () => {
+      try {
+        const frameUrl = browserFrame.contentWindow?.location?.href;
+        if (frameUrl && frameUrl.startsWith('https://eirene.elizahome.com/browse?url=')) {
+          const url = new URL(frameUrl).searchParams.get('url');
+          if (url && token) {
+            browserFrame.src = 'about:blank';
+            navigate(url);
+          }
+        }
+      } catch(e) {}
     });
 
     navigator.serviceWorker.addEventListener('message', event => {

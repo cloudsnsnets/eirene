@@ -231,8 +231,7 @@ async function connectToHopper() {
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('
-');
+      const lines = buffer.split('\n');
       buffer = lines.pop();  // keep incomplete line
 
       for (const line of lines) {
