@@ -40,19 +40,29 @@
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: #0a0a0a; color: #e0e0e0;
       font-family: system-ui, -apple-system, sans-serif;
-      min-height: 100vh; display: flex; flex-direction: column;
+      height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Auth screen ── */
+    #auth-screen {
+      flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center; padding: 2rem;
     }
+
+    #auth-screen.hidden { display: none; }
+
     .logo { font-size: 2.5rem; font-weight: 200; letter-spacing: 0.3em; color: #ffffff; margin-bottom: 0.25rem; }
     .tagline { font-size: 0.75rem; letter-spacing: 0.2em; color: #555; text-transform: uppercase; margin-bottom: 3rem; }
 
     .status-ring {
       width: 120px; height: 120px; border-radius: 50%; border: 2px solid #222;
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 2rem; transition: all 0.5s ease; cursor: pointer; position: relative;
+      margin-bottom: 2rem; transition: all 0.5s ease; cursor: pointer;
     }
     .status-ring.idle      { border-color: #333; }
     .status-ring.listening { border-color: #4a9eff; box-shadow: 0 0 30px rgba(74,158,255,0.3); animation: pulse 1.5s infinite; }
@@ -72,10 +82,8 @@
     .message.warning { color: #f0a500; }
     .message.enroll  { color: #9b59b6; }
     .message.tor     { color: #a569bd; }
-
     .noise-level { font-size: 0.7rem; color: #333; letter-spacing: 0.1em; margin-bottom: 2rem; text-transform: uppercase; }
 
-    /* Enroll section */
     .enroll-section { display: none; flex-direction: column; align-items: center; gap: 1rem; margin-top: 1rem; }
     .enroll-section.visible { display: flex; }
     .enroll-progress { display: flex; gap: 0.5rem; }
@@ -90,102 +98,188 @@
     .btn.tor-btn           { border-color: #7d3c98; color: #a569bd; }
     .btn.tor-btn:hover     { background: rgba(125,60,152,0.15); }
     .btn.tor-btn.active    { background: rgba(125,60,152,0.2); border-color: #a569bd; color: #d2b4de; }
-    .btn.danger            { border-color: #e74c3c; color: #e74c3c; }
-    .btn.danger:hover      { background: rgba(231,76,60,0.1); }
 
-    /* Tor warning modal */
-    .tor-modal {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.85);
+    /* ── Browser screen ── */
+    #browser-screen {
+      flex: 1; display: none; flex-direction: column;
+      background: #0a0a0a;
+    }
+    #browser-screen.visible { display: flex; }
+
+    /* Chrome bar */
+    #chrome-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #111; border-bottom: 1px solid #1a1a1a;
+      flex-shrink: 0;
+    }
+
+    #nav-back, #nav-forward, #nav-reload {
+      background: none; border: none; color: #555; cursor: pointer;
+      font-size: 1rem; padding: 0.25rem 0.4rem; border-radius: 4px;
+      transition: color 0.2s;
+    }
+    #nav-back:hover, #nav-forward:hover, #nav-reload:hover { color: #aaa; }
+
+    #address-bar {
+      flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a;
+      color: #e0e0e0; padding: 0.4rem 0.75rem;
+      border-radius: 1rem; font-size: 0.85rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    #address-bar:focus { border-color: #444; }
+    #address-bar.tor-active { border-color: #7d3c98; }
+
+    #nav-go {
+      background: none; border: 1px solid #333; color: #666;
+      padding: 0.35rem 0.75rem; border-radius: 1rem;
+      font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    #nav-go:hover { border-color: #555; color: #aaa; }
+
+    #tor-indicator {
+      font-size: 0.9rem; cursor: pointer; opacity: 0.5;
+      transition: opacity 0.2s; user-select: none;
+    }
+    #tor-indicator.active { opacity: 1; }
+    #tor-indicator:hover { opacity: 0.8; }
+
+    #auth-btn {
+      background: none; border: 1px solid #2ecc71; color: #2ecc71;
+      padding: 0.3rem 0.6rem; border-radius: 1rem;
+      font-size: 0.65rem; cursor: pointer; letter-spacing: 0.05em;
+      text-transform: uppercase; transition: all 0.2s; flex-shrink: 0;
+    }
+    #auth-btn:hover { background: rgba(46,204,113,0.1); }
+    #auth-btn.locked { border-color: #e74c3c; color: #e74c3c; }
+    #auth-btn.locked:hover { background: rgba(231,76,60,0.1); }
+
+    /* Loading bar */
+    #loading-bar {
+      height: 2px; background: #4a9eff;
+      width: 0%; transition: width 0.3s ease;
+      flex-shrink: 0;
+    }
+    #loading-bar.tor { background: #a569bd; }
+
+    /* iframe viewport */
+    #browser-frame {
+      flex: 1; border: none; background: #fff;
+    }
+
+    /* Error / welcome page */
+    #browser-welcome {
+      flex: 1; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      z-index: 100;
-      padding: 2rem;
+      color: #333; gap: 1rem;
     }
+    #browser-welcome.hidden { display: none; }
+    #browser-welcome .logo-sm { font-size: 1.2rem; letter-spacing: 0.3em; color: #2ecc71; }
+    #browser-welcome p { font-size: 0.8rem; color: #555; text-align: center; max-width: 260px; line-height: 1.6; }
+
+    /* Status bar */
+    #status-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.3rem 0.75rem;
+      background: #0a0a0a; border-top: 1px solid #1a1a1a;
+      font-size: 0.65rem; color: #333; letter-spacing: 0.08em;
+      text-transform: uppercase; flex-shrink: 0;
+    }
+    .s-dot { width: 5px; height: 5px; border-radius: 50%; background: #333; }
+    .s-dot.green  { background: #2ecc71; }
+    .s-dot.purple { background: #a569bd; }
+    .s-dot.blue   { background: #4a9eff; }
+    #status-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #2a2a2a; }
+
+    /* Tor modal */
+    .tor-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); align-items: center; justify-content: center; z-index: 100; padding: 2rem; }
     .tor-modal.visible { display: flex; }
-    .tor-modal-box {
-      background: #0f0f0f;
-      border: 1px solid #7d3c98;
-      border-radius: 8px;
-      padding: 2rem;
-      max-width: 320px;
-      width: 100%;
-    }
-    .tor-modal-title {
-      font-size: 1.2rem;
-      font-weight: 300;
-      letter-spacing: 0.3em;
-      color: #a569bd;
-      text-align: center;
-      margin-bottom: 1.5rem;
-      text-transform: uppercase;
-    }
-    .tor-modal-divider {
-      border: none;
-      border-top: 1px solid #2d1b4e;
-      margin: 1rem 0;
-    }
-    .tor-modal-body {
-      font-size: 0.85rem;
-      color: #aaa;
-      line-height: 1.8;
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
+    .tor-modal-box { background: #0f0f0f; border: 1px solid #7d3c98; border-radius: 8px; padding: 2rem; max-width: 320px; width: 100%; }
+    .tor-modal-title { font-size: 1.2rem; font-weight: 300; letter-spacing: 0.3em; color: #a569bd; text-align: center; margin-bottom: 1.5rem; text-transform: uppercase; }
+    .tor-modal-divider { border: none; border-top: 1px solid #2d1b4e; margin: 1rem 0; }
+    .tor-modal-body { font-size: 0.85rem; color: #aaa; line-height: 1.8; text-align: center; margin-bottom: 1.5rem; }
     .tor-modal-body strong { color: #d2b4de; }
     .tor-modal-body em { color: #888; font-style: normal; font-size: 0.8rem; }
-    .tor-modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: center;
-    }
-
-    .tunnel-status { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; color: #333; letter-spacing: 0.1em; text-transform: uppercase; }
-    .dot { width: 6px; height: 6px; border-radius: 50%; background: #333; transition: background 0.3s; }
-    .dot.active { background: #2ecc71; }
-    .dot.tor-active { background: #a569bd; }
-    .dot.noise  { background: #4a9eff; }
-
-    /* Tor toggle button — fixed position when tunnel is open */
-    .tor-toggle {
-      position: fixed;
-      bottom: 1.5rem;
-      left: 1.5rem;
-      display: none;
-    }
-    .tor-toggle.visible { display: block; }
-
-    .setup-link { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #222; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; text-decoration: none; transition: color 0.3s; }
-    .setup-link:hover { color: #555; }
-    .footer { position: fixed; bottom: 4rem; left: 1.5rem; font-size: 0.6rem; color: #222; letter-spacing: 0.05em; }
+    .tor-modal-actions { display: flex; gap: 0.75rem; justify-content: center; }
   </style>
 </head>
 <body>
 
-  <div class="logo">EIRENE</div>
-  <div class="tagline">Your tunnel. Your voice. Your rules.</div>
+  <!-- ── Auth Screen ── -->
+  <div id="auth-screen">
+    <div class="logo">EIRENE</div>
+    <div class="tagline">Your tunnel. Your voice. Your rules.</div>
 
-  <div class="status-ring idle" id="ring">
-    <span class="ring-icon" id="ring-icon">🎙️</span>
-  </div>
-
-  <div class="message" id="message">Tap to authenticate</div>
-  <div class="noise-level" id="noise-level"></div>
-
-  <!-- Enroll section -->
-  <div class="enroll-section" id="enroll-section">
-    <div class="enroll-progress">
-      <div class="enroll-dot" id="edot-1"></div>
-      <div class="enroll-dot" id="edot-2"></div>
-      <div class="enroll-dot" id="edot-3"></div>
+    <div class="status-ring idle" id="ring">
+      <span class="ring-icon" id="ring-icon">🎙️</span>
     </div>
-    <input type="password" id="enroll-secret" placeholder="setup secret"
-      style="background:transparent;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;letter-spacing:0.1em;text-align:center;width:180px;outline:none;">
-    <button class="btn enroll-btn" id="enroll-btn" onclick="enrollStep()">Record passphrase</button>
-    <button class="btn" onclick="exitEnroll()">Cancel</button>
+
+    <div class="message" id="message">Tap to authenticate</div>
+    <div class="noise-level" id="noise-level"></div>
+
+    <div class="enroll-section" id="enroll-section">
+      <div class="enroll-progress">
+        <div class="enroll-dot" id="edot-1"></div>
+        <div class="enroll-dot" id="edot-2"></div>
+        <div class="enroll-dot" id="edot-3"></div>
+      </div>
+      <input type="password" id="enroll-secret" placeholder="setup secret"
+        style="background:transparent;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;letter-spacing:0.1em;text-align:center;width:180px;outline:none;">
+      <button class="btn enroll-btn" id="enroll-btn" onclick="enrollStep()">Record passphrase</button>
+      <button class="btn" onclick="exitEnroll()">Cancel</button>
+    </div>
+
+    <div style="position:fixed;bottom:1.5rem;right:1.5rem;display:flex;align-items:center;gap:0.5rem;font-size:0.7rem;color:#333;letter-spacing:0.1em;text-transform:uppercase;">
+      <div class="s-dot" id="tunnel-dot"></div>
+      <span id="tunnel-label">tunnel closed</span>
+      &nbsp;&nbsp;
+      <div class="s-dot blue" id="noise-dot" style="opacity:0.3"></div>
+      <span>noise</span>
+    </div>
+
+    <a style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);font-size:0.65rem;color:#222;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;text-decoration:none;" id="setup-link" onclick="enterEnroll()">setup</a>
+    <div style="position:fixed;bottom:1.5rem;left:1.5rem;font-size:0.6rem;color:#222;letter-spacing:0.05em;">εἰρήνη</div>
   </div>
 
-  <!-- Tor warning modal -->
+  <!-- ── Browser Screen ── -->
+  <div id="browser-screen">
+
+    <!-- Chrome bar -->
+    <div id="chrome-bar">
+      <button id="nav-back"    onclick="browserBack()">←</button>
+      <button id="nav-forward" onclick="browserForward()">→</button>
+      <button id="nav-reload"  onclick="browserReload()">↺</button>
+
+      <input id="address-bar" type="text" placeholder="Enter URL or search..."
+        onkeydown="if(event.key==='Enter') navigate()"
+        onfocus="this.select()">
+
+      <button id="nav-go" onclick="navigate()">Go</button>
+      <span id="tor-indicator" onclick="handleTorToggle()" title="Toggle Tor">🧅</span>
+      <button id="auth-btn" onclick="lockSession()">🔓 Lock</button>
+    </div>
+
+    <!-- Loading bar -->
+    <div id="loading-bar"></div>
+
+    <!-- Welcome / iframe -->
+    <div id="browser-welcome">
+      <div class="logo-sm">EIRENE</div>
+      <p>Your private browser is ready.<br>Type a URL above and tap Go.</p>
+    </div>
+    <iframe id="browser-frame" class="hidden" sandbox="allow-scripts allow-forms allow-popups"></iframe>
+
+    <!-- Status bar -->
+    <div id="status-bar">
+      <div class="s-dot green" id="sb-tunnel"></div>
+      <span id="sb-mode">standard</span>
+      <span id="status-url"></span>
+    </div>
+
+  </div>
+
+  <!-- Tor modal -->
   <div class="tor-modal" id="tor-modal">
     <div class="tor-modal-box">
       <div class="tor-modal-title">Tor Mode</div>
@@ -205,25 +299,10 @@
     </div>
   </div>
 
-  <div class="tunnel-status">
-    <div class="dot" id="tunnel-dot"></div>
-    <span id="tunnel-label">tunnel closed</span>
-    &nbsp;&nbsp;
-    <div class="dot noise" id="noise-dot" style="opacity:0.3"></div>
-    <span>noise</span>
-  </div>
-
-  <!-- Tor toggle — only visible when tunnel is open -->
-  <div class="tor-toggle" id="tor-toggle">
-    <button class="btn tor-btn" id="tor-btn" onclick="handleTorToggle()">tor</button>
-  </div>
-
-  <a class="setup-link" id="setup-link" onclick="enterEnroll()">setup</a>
-  <div class="footer">εἰρήνη</div>
-
   <script>
     // -- Config ---------------------------------------------------------------
     const VOICE_AUTH_URL        = '/voice-auth';
+    const BROWSE_URL            = 'https://eirene-proxy.elizahome.com/browse';
     const PROXY_TOR_ENABLE_URL  = 'https://eirene-proxy.elizahome.com/tor/enable';
     const PROXY_TOR_DISABLE_URL = 'https://eirene-proxy.elizahome.com/tor/disable';
     const NOISE_LEVEL_THRESHOLD = 55;
@@ -236,40 +315,68 @@
     let enrollCount = 0;
     let enrollMode  = false;
     let torMode     = false;
+    let history     = [];
+    let historyIdx  = -1;
 
     // -- Elements -------------------------------------------------------------
-    const ring       = document.getElementById('ring');
-    const ringIcon   = document.getElementById('ring-icon');
-    const message    = document.getElementById('message');
-    const noiseEl    = document.getElementById('noise-level');
-    const tunnelDot  = document.getElementById('tunnel-dot');
-    const tunnelLbl  = document.getElementById('tunnel-label');
-    const noiseDot   = document.getElementById('noise-dot');
-    const enrollSect = document.getElementById('enroll-section');
-    const enrollBtn  = document.getElementById('enroll-btn');
-    const setupLink  = document.getElementById('setup-link');
-    const torModal   = document.getElementById('tor-modal');
-    const torToggle  = document.getElementById('tor-toggle');
-    const torBtn     = document.getElementById('tor-btn');
+    const authScreen   = document.getElementById('auth-screen');
+    const browserScreen= document.getElementById('browser-screen');
+    const ring         = document.getElementById('ring');
+    const ringIcon     = document.getElementById('ring-icon');
+    const message      = document.getElementById('message');
+    const noiseEl      = document.getElementById('noise-level');
+    const tunnelDot    = document.getElementById('tunnel-dot');
+    const tunnelLbl    = document.getElementById('tunnel-label');
+    const noiseDot     = document.getElementById('noise-dot');
+    const enrollSect   = document.getElementById('enroll-section');
+    const enrollBtn    = document.getElementById('enroll-btn');
+    const setupLink    = document.getElementById('setup-link');
+    const torModal     = document.getElementById('tor-modal');
+    const addressBar   = document.getElementById('address-bar');
+    const browserFrame = document.getElementById('browser-frame');
+    const browserWelcome = document.getElementById('browser-welcome');
+    const loadingBar   = document.getElementById('loading-bar');
+    const torIndicator = document.getElementById('tor-indicator');
+    const authBtn      = document.getElementById('auth-btn');
+    const sbMode       = document.getElementById('sb-mode');
+    const statusUrl    = document.getElementById('status-url');
 
-    // -- Service Worker Registration ------------------------------------------
+    // -- Service Worker -------------------------------------------------------
     async function registerWorkers() {
-      if (!('serviceWorker' in navigator)) {
-        setMessage('Service workers not supported.', 'error');
-        return;
-      }
+      if (!('serviceWorker' in navigator)) return;
       try {
         await navigator.serviceWorker.register('/tunnel-worker.js', { scope: '/' });
         console.log('tunnel-worker registered');
-      } catch (e) {
-        console.error('SW registration failed:', e);
-      }
+      } catch (e) { console.error('SW registration failed:', e); }
+    }
+
+    // -- Tab Check ------------------------------------------------------------
+    async function checkOtherTabs() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (!reg.active) return;
+        const count = await new Promise(resolve => {
+          const channel = new MessageChannel();
+          channel.port1.onmessage = e => resolve(e.data.count);
+          reg.active.postMessage({ type: 'COUNT_CLIENTS' }, [channel.port2]);
+          setTimeout(() => resolve(0), 1000);
+        });
+        console.log('[eirene] Open tabs:', count);
+        if (count > 1) showTabWarning(count);
+      } catch(e) {}
+    }
+
+    function showTabWarning(count) {
+      const n = (count && count > 1) ? count - 1 : 'other';
+      setRing('error');
+      ringIcon.textContent = '⚠️';
+      setMessage(`${n} other tab${n !== 1 ? 's' : ''} detected. Close browser. Reopen. Do not restore tabs.`, 'warning');
+      setTimeout(() => { setRing('idle'); ringIcon.textContent = '🎙️'; setMessage('Tap to authenticate when ready.'); }, 8000);
     }
 
     // -- Noise Check ----------------------------------------------------------
     async function measureNoise() {
-      let stream = null;
-      let ctx    = null;
+      let stream = null, ctx = null;
       try {
         stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
         ctx      = new AudioContext();
@@ -277,7 +384,6 @@
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         source.connect(analyser);
-        // Bug #10 fix: wait for AudioContext to fill buffers before sampling
         await new Promise(resolve => setTimeout(resolve, 100));
         const data = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(data);
@@ -285,10 +391,8 @@
         const db  = Math.round(avg);
         noiseEl.textContent = `ambient noise: ${db} db`;
         return db;
-      } catch (e) {
-        return 0;
-      } finally {
-        // Always release microphone and audio context — even on exception
+      } catch (e) { return 0; }
+      finally {
         if (stream) stream.getTracks().forEach(t => t.stop());
         if (ctx)    ctx.close().catch(() => {});
       }
@@ -298,87 +402,167 @@
     async function recordAudio(seconds) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       return new Promise((resolve, reject) => {
-        const chunks   = [];
-        const recorder = new MediaRecorder(stream);
+        const chunks = [], recorder = new MediaRecorder(stream);
         recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
-          stream.getTracks().forEach(t => t.stop());
-          resolve(new Blob(chunks, { type: recorder.mimeType }));
-        };
+        recorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); resolve(new Blob(chunks, { type: recorder.mimeType })); };
         recorder.onerror = reject;
         recorder.start();
         setTimeout(() => recorder.stop(), seconds * 1000);
       });
     }
 
-    // -- Tor Mode -------------------------------------------------------------
-    function handleTorToggle() {
-      if (torMode) {
-        disableTor();
-      } else {
-        torModal.classList.add('visible');
+    // -- Browser Navigation ---------------------------------------------------
+    async function navigate(url) {
+      url = url || addressBar.value.trim();
+      if (!url) return;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+
+      addressBar.value = url;
+      startLoading();
+
+      try {
+        const browseUrl = `${BROWSE_URL}?url=${encodeURIComponent(url)}`;
+        const resp = await fetch(browseUrl, {
+          headers: { 'X-Eirene-Auth': `Bearer ${token}` }
+        });
+
+        if (!resp.ok) {
+          showBrowseError(url, resp.status);
+          return;
+        }
+
+        const finalUrl = resp.headers.get('X-Eirene-Final-URL') || url;
+        const html     = await resp.text();
+        const blob     = new Blob([html], { type: 'text/html' });
+        const blobUrl  = URL.createObjectURL(blob);
+
+        browserFrame.src = blobUrl;
+        browserFrame.classList.remove('hidden');
+        browserWelcome.classList.add('hidden');
+
+        addressBar.value = finalUrl;
+        statusUrl.textContent = finalUrl;
+
+        // Update history
+        history = history.slice(0, historyIdx + 1);
+        history.push(finalUrl);
+        historyIdx = history.length - 1;
+
+      } catch (e) {
+        showBrowseError(url, 0);
+      } finally {
+        stopLoading();
       }
     }
 
-    function closeTorModal() {
-      torModal.classList.remove('visible');
+    function showBrowseError(url, status) {
+      const html = `<html><body style="font-family:system-ui;background:#0a0a0a;color:#e0e0e0;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:1rem;">
+        <div style="font-size:2rem;">⚠️</div>
+        <div style="color:#e74c3c;">Could not load ${url}</div>
+        <div style="color:#555;font-size:0.8rem;">Status: ${status || 'Network error'}</div>
+      </body></html>`;
+      const blob = new Blob([html], { type: 'text/html' });
+      browserFrame.src = URL.createObjectURL(blob);
+      browserFrame.classList.remove('hidden');
+      browserWelcome.classList.add('hidden');
+      stopLoading();
     }
+
+    function startLoading() {
+      loadingBar.style.width = '30%';
+      loadingBar.className = torMode ? 'tor' : '';
+      setTimeout(() => loadingBar.style.width = '70%', 300);
+    }
+
+    function stopLoading() {
+      loadingBar.style.width = '100%';
+      setTimeout(() => { loadingBar.style.width = '0%'; }, 400);
+    }
+
+    function browserBack() {
+      if (historyIdx > 0) { historyIdx--; navigate(history[historyIdx]); }
+    }
+
+    function browserForward() {
+      if (historyIdx < history.length - 1) { historyIdx++; navigate(history[historyIdx]); }
+    }
+
+    function browserReload() {
+      if (history[historyIdx]) navigate(history[historyIdx]);
+    }
+
+    function lockSession() {
+      sendSessionEnd();
+      showAuthScreen();
+    }
+
+    function showBrowserScreen() {
+      authScreen.classList.add('hidden');
+      browserScreen.classList.add('visible');
+      addressBar.focus();
+    }
+
+    function showAuthScreen() {
+      browserScreen.classList.remove('visible');
+      authScreen.classList.remove('hidden');
+      token = null;
+      torMode = false;
+      torIndicator.classList.remove('active');
+      sbMode.textContent = 'standard';
+      addressBar.value = '';
+      browserFrame.src = 'about:blank';
+      browserFrame.classList.add('hidden');
+      browserWelcome.classList.remove('hidden');
+      setRing('idle');
+      setMessage('Tap to authenticate');
+      ringIcon.textContent = '🎙️';
+      setTunnelStatus(false);
+    }
+
+    // -- Tor Mode -------------------------------------------------------------
+    function handleTorToggle() {
+      if (torMode) disableTor();
+      else torModal.classList.add('visible');
+    }
+
+    function closeTorModal() { torModal.classList.remove('visible'); }
 
     async function confirmTorEnable() {
       closeTorModal();
       try {
         const resp = await fetch(PROXY_TOR_ENABLE_URL, {
-          method: 'POST',
-          headers: { 'X-Eirene-Auth': `Bearer ${token}` }
+          method: 'POST', headers: { 'X-Eirene-Auth': `Bearer ${token}` }
         });
         const data = await resp.json();
         if (data.mode === 'tor') {
           torMode = true;
-          setRing('tor');
-          ringIcon.textContent = '🧅';
-          setMessage('Tor active. Text only.', 'tor');
-          tunnelDot.className = 'dot tor-active';
-          tunnelLbl.textContent = 'tor active';
-          torBtn.textContent = 'tor on';
-          torBtn.classList.add('active');
-          // Notify SW of Tor mode
+          torIndicator.classList.add('active');
+          sbMode.textContent = 'tor';
+          addressBar.classList.add('tor-active');
           if (navigator.serviceWorker.controller) {
             navigator.serviceWorker.controller.postMessage({ type: 'SET_TOR_MODE', enabled: true });
           }
           console.log('[eirene] Tor mode enabled.');
         }
-      } catch (e) {
-        setMessage('Could not enable Tor.', 'error');
-        console.error(e);
-      }
+      } catch(e) { console.error(e); }
     }
 
     async function disableTor() {
       try {
         const resp = await fetch(PROXY_TOR_DISABLE_URL, {
-          method: 'POST',
-          headers: { 'X-Eirene-Auth': `Bearer ${token}` }
+          method: 'POST', headers: { 'X-Eirene-Auth': `Bearer ${token}` }
         });
         const data = await resp.json();
         if (data.mode === 'standard') {
           torMode = false;
-          setRing('open');
-          ringIcon.textContent = '🔓';
-          setMessage('Tunnel open.', 'success');
-          tunnelDot.className = 'dot active';
-          tunnelLbl.textContent = 'tunnel open';
-          torBtn.textContent = 'tor';
-          torBtn.classList.remove('active');
-          // Notify SW
+          torIndicator.classList.remove('active');
+          sbMode.textContent = 'standard';
+          addressBar.classList.remove('tor-active');
           if (navigator.serviceWorker.controller) {
             navigator.serviceWorker.controller.postMessage({ type: 'SET_TOR_MODE', enabled: false });
           }
-          console.log('[eirene] Tor mode disabled.');
         }
-      } catch (e) {
-        setMessage('Could not disable Tor.', 'error');
-        console.error(e);
-      }
+      } catch(e) { console.error(e); }
     }
 
     // -- Enroll Flow ----------------------------------------------------------
@@ -386,7 +570,6 @@
       enrollMode = true; enrollCount = 0;
       enrollSect.classList.add('visible');
       setupLink.style.display = 'none';
-      torToggle.classList.remove('visible');
       ring.className = 'status-ring idle';
       ringIcon.textContent = '🎙️';
       setMessage('Enroll your voice — 3 recordings needed.', 'enroll');
@@ -397,7 +580,6 @@
       enrollMode = false; enrollCount = 0;
       enrollSect.classList.remove('visible');
       setupLink.style.display = '';
-      if (token) torToggle.classList.add('visible');
       setRing('idle'); ringIcon.textContent = '🎙️';
       setMessage('Tap to authenticate');
       updateEnrollDots();
@@ -415,10 +597,7 @@
     async function enrollStep() {
       if (recording) return;
       const enrollSecret = document.getElementById('enroll-secret').value.trim();
-      if (!enrollSecret) {
-        setMessage('Enter setup secret first.', 'warning');
-        return;
-      }
+      if (!enrollSecret) { setMessage('Enter setup secret first.', 'warning'); return; }
       recording = true; enrollBtn.disabled = true;
       try {
         setRing('verifying'); setMessage('Checking environment…', 'enroll');
@@ -484,20 +663,15 @@
         const data = await response.json();
         if (data.status === 'verified') {
           token = data.token;
-          // Use reg.active directly — controller can be null on first visit
-          // or after a SW update even when the SW is active and controlling
           try {
             const reg = await navigator.serviceWorker.ready;
-            if (reg.active) {
-              reg.active.postMessage({ type: 'SET_TOKEN', token: token });
-            }
-          } catch(e) {
-            console.error('[eirene] Failed to send token to SW:', e);
-          }
+            if (reg.active) reg.active.postMessage({ type: 'SET_TOKEN', token });
+          } catch(e) {}
           setRing('open'); setMessage('Tunnel open.', 'success');
           ringIcon.textContent = '🔓';
           setTunnelStatus(true);
-          torToggle.classList.add('visible');
+          // Switch to browser screen after brief pause
+          setTimeout(() => showBrowserScreen(), 800);
         } else if (data.status === 'not_recognised') {
           setRing('error'); setMessage('Not recognised. Try again.', 'error');
           setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
@@ -517,17 +691,15 @@
     function setRing(state)  { ring.className = `status-ring ${state}`; }
     function setMessage(text, type = '') { message.textContent = text; message.className = `message ${type}`; }
     function setTunnelStatus(open) {
-      tunnelDot.className   = open ? 'dot active' : 'dot';
+      tunnelDot.className   = open ? 's-dot green' : 's-dot';
       tunnelLbl.textContent = open ? 'tunnel open' : 'tunnel closed';
     }
 
     // -- Session End ----------------------------------------------------------
     function sendSessionEnd() {
-      // In Tor mode — session persists across tab switches.
-      // User chose maximum privacy; we trust that decision.
-      // Session only ends on explicit browser close or hard expiry.
-      if (torMode) return;
-
+      if (torMode && token) {
+        fetch(PROXY_TOR_DISABLE_URL, { method: 'POST', headers: { 'X-Eirene-Auth': `Bearer ${token}` } }).catch(() => {});
+      }
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'SESSION_END' });
       }
@@ -535,9 +707,12 @@
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        sendSessionEnd();
-        if (!torMode) console.log('[eirene] Page hidden — session ended.');
-        else console.log('[eirene] Page hidden — Tor mode active, session kept.');
+        if (!torMode) {
+          sendSessionEnd();
+          console.log('[eirene] Page hidden — session ended.');
+        } else {
+          console.log('[eirene] Page hidden — Tor mode active, session kept.');
+        }
       }
     });
 
@@ -552,72 +727,23 @@
 
     registerWorkers().then(() => {
       noiseDot.style.opacity = '1';
-      // Wait for SW to be active and controlling before counting tabs
       if (navigator.serviceWorker.controller) {
-        // SW already controlling — check immediately with small delay
         setTimeout(checkOtherTabs, 500);
       } else {
-        // SW just installed — wait for it to take control
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           setTimeout(checkOtherTabs, 500);
         });
       }
     });
 
-
-    // -- Tab Check -----------------------------------------------------------
-    async function checkOtherTabs() {
-      try {
-        // Ask the SW how many clients (tabs/windows) it controls
-        const reg = await navigator.serviceWorker.ready;
-        if (!reg.active) return;
-
-        // Request client count from SW
-        const count = await new Promise(resolve => {
-          const channel = new MessageChannel();
-          channel.port1.onmessage = e => resolve(e.data.count);
-          reg.active.postMessage({ type: 'COUNT_CLIENTS' }, [channel.port2]);
-          // Timeout fallback
-          setTimeout(() => resolve(0), 1000);
-        });
-
-        console.log('[eirene] Open tabs:', count);
-        if (count > 1) {
-          showTabWarning(count);
-        }
-      } catch(e) {
-        console.log('[eirene] Tab check error:', e);
-      }
-    }
-
-    function showTabWarning(count) {
-      const n = (count && count > 1) ? count - 1 : 'other';
-      setRing('error');
-      ringIcon.textContent = '⚠️';
-      setMessage(`${n} other tab${n !== 1 ? 's' : ''} detected. Close browser. Reopen. Do not restore tabs.`, 'warning');
-      setTimeout(() => {
-        setRing('idle');
-        ringIcon.textContent = '🎙️';
-        setMessage('Tap to authenticate when ready.');
-      }, 8000);
-    }
-
-    // -- SW Message Handler ---------------------------------------------------
     navigator.serviceWorker.addEventListener('message', event => {
-      if (event.data.type === 'TUNNEL_URL_UPDATED') {
-        console.log('Tunnel URL updated:', event.data.url);
-      }
       if (event.data.type === 'SESSION_ENDED') {
-        token = null;
-        torMode = false;
-        setRing('idle');
-        setMessage('Tap to authenticate');
-        ringIcon.textContent = '🎙️';
-        setTunnelStatus(false);
-        torToggle.classList.remove('visible');
-        torBtn.textContent = 'tor';
-        torBtn.classList.remove('active');
+        token = null; torMode = false;
+        showAuthScreen();
         console.log('[eirene] Session ended. Re-authentication required.');
+      }
+      if (event.data.type === 'TUNNEL_URL_UPDATED') {
+        console.log('[eirene] Tunnel URL updated:', event.data.url);
       }
     });
   </script>
