@@ -705,7 +705,7 @@
     new Worker('/noise-worker.js');
 
     registerWorkers().then(() => {
-      noiseDot.style.opacity = '1';);
+      noiseDot.style.opacity = '1';
 
     window.addEventListener('message', event => {
       if (event.data && event.data.type === 'EIRENE_NAV') {
