@@ -40,6 +40,20 @@ docker ps > /dev/null 2>&1 || \
 echo -e "${GREEN}✓ Docker $(docker --version | cut -d' ' -f3 | tr -d ',')${NC}"
 echo -e "${GREEN}✓ Docker Compose $(docker compose version --short)${NC}"
 
+# ── 1b. Clone Eirene repo ────────────────────────────────────────────────────
+EIRENE_DIR="$HOME/eirene"
+
+if [ -d "$EIRENE_DIR/.git" ]; then
+    echo -e "${GREEN}✓ Eirene repo found — updating...${NC}"
+    git -C "$EIRENE_DIR" pull --quiet
+else
+    echo -e "  Cloning Eirene..."
+    git clone --quiet https://github.com/cloudsnsnets/eirene.git "$EIRENE_DIR" ||         die "Failed to clone repo. Check your internet connection."
+    echo -e "${GREEN}✓ Eirene cloned${NC}"
+fi
+
+cd "$EIRENE_DIR" || die "Cannot enter eirene directory."
+
 # ── 2. Cloudflare setup ───────────────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}[2/6] Cloudflare setup...${NC}"
