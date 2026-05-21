@@ -736,6 +736,17 @@
       }
     });
 
+    // Handle navigation messages from iframe (intercepted links/forms)
+    window.addEventListener('message', event => {
+      if (event.data && event.data.type === 'EIRENE_NAV') {
+        const url = event.data.url;
+        if (url && token) {
+          addressBar.value = url;
+          navigate(url);
+        }
+      }
+    });
+
     navigator.serviceWorker.addEventListener('message', event => {
       if (event.data.type === 'SESSION_ENDED') {
         token = null; torMode = false;
