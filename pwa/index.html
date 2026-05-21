@@ -209,7 +209,7 @@
   <!-- ── Auth Screen ── -->
   <div id="auth-screen">
     <div class="logo">EIRENE</div>
-    <div class="tagline">Your tunnel. Your voice. Your rules.</div>
+    <div class="tagline">Private browsing. Ad-free. Your voice.</div>
 
     <div class="status-ring idle" id="ring">
       <span class="ring-icon" id="ring-icon">🎙️</span>
@@ -353,30 +353,6 @@
         await navigator.serviceWorker.register('/tunnel-worker.js', { scope: '/' });
         console.log('tunnel-worker registered');
       } catch (e) { console.error('SW registration failed:', e); }
-    }
-
-    // -- Tab Check ------------------------------------------------------------
-    async function checkOtherTabs() {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        if (!reg.active) return;
-        const count = await new Promise(resolve => {
-          const channel = new MessageChannel();
-          channel.port1.onmessage = e => resolve(e.data.count);
-          reg.active.postMessage({ type: 'COUNT_CLIENTS' }, [channel.port2]);
-          setTimeout(() => resolve(0), 1000);
-        });
-        console.log('[eirene] Open tabs:', count);
-        if (count > 1) showTabWarning(count);
-      } catch(e) {}
-    }
-
-    function showTabWarning(count) {
-      const n = (count && count > 1) ? count - 1 : 'other';
-      setRing('error');
-      ringIcon.textContent = '⚠️';
-      setMessage(`${n} other tab${n !== 1 ? 's' : ''} detected. Close browser. Reopen. Do not restore tabs.`, 'warning');
-      setTimeout(() => { setRing('idle'); ringIcon.textContent = '🎙️'; setMessage('Tap to authenticate when ready.'); }, 8000);
     }
 
     // -- Noise Check ----------------------------------------------------------
@@ -721,13 +697,7 @@
       }
     }
 
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        // if (!torMode) sendSessionEnd(); -- disabled during v2 dev
-      }
-    });
 
-    // window.addEventListener('beforeunload', () => { sendSessionEnd(); }); -- disabled during v2 dev
 
     // -- Init -----------------------------------------------------------------
     ring.addEventListener('click', authenticate);
@@ -735,15 +705,7 @@
     new Worker('/noise-worker.js');
 
     registerWorkers().then(() => {
-      noiseDot.style.opacity = '1';
-      if (navigator.serviceWorker.controller) {
-        setTimeout(checkOtherTabs, 500);
-      } else {
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          setTimeout(checkOtherTabs, 500);
-        });
-      }
-    });
+      noiseDot.style.opacity = '1';);
 
     window.addEventListener('message', event => {
       if (event.data && event.data.type === 'EIRENE_NAV') {
