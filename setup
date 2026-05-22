@@ -197,6 +197,7 @@ echo -e "${GREEN}✓ Images ready${NC}"
 echo ""
 echo -e "${CYAN}[6/6] Starting Eirene...${NC}"
 
+docker volume create eirene_voiceprints > /dev/null 2>&1 || true
 docker compose up -d || die "Failed to start services."
 
 echo -e "  Waiting for voice auth service..."
