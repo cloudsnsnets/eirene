@@ -397,7 +397,7 @@
       if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
       const blob = new Blob([html], { type: 'text/html' });
       currentBlobUrl = URL.createObjectURL(blob);
-      browserFrame.onload = injectTokenIntoLinks;
+      browserFrame.onload = () => { injectTokenIntoLinks(); checkFrameBlocked(); };
       browserFrame.src = currentBlobUrl;
       browserFrame.classList.remove('hidden');
       browserWelcome.classList.add('hidden');
@@ -452,6 +452,23 @@
       loadingBar.className = enabled ? 'tor' : '';
       if (navigator.serviceWorker.controller)
         navigator.serviceWorker.controller.postMessage({ type: 'SET_TOR_MODE', enabled });
+    }
+
+    function checkFrameBlocked() {
+      try {
+        const loc = browserFrame.contentWindow?.location?.href;
+        if (browserFrame.src && browserFrame.src !== 'about:blank' &&
+            (!loc || loc === 'about:blank')) {
+          showFrameBlocked();
+        }
+      } catch(e) {}
+    }
+
+    function showFrameBlocked() {
+      const url = addressBar.value;
+      const blocked_html = '<html><head><style>body{background:#0a0a0a;color:#e8e8e0;font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;flex-direction:column;gap:1.5rem;padding:2rem;text-align:center;}h2{font-size:1.5rem;font-weight:300;color:#c8b89a;}p{font-size:1rem;color:#666;max-width:400px;line-height:1.7;}.btn{background:#c8b89a;color:#0a0a0a;border:none;padding:0.75rem 2rem;font-size:0.8rem;letter-spacing:0.15em;cursor:pointer;text-transform:uppercase;margin:0.25rem;}.tor{background:transparent;border:1px solid #9b7fd4;color:#9b7fd4;}.tor:hover{background:#9b7fd4;color:#0a0a0a;}</style></head><body><h2>This site blocks embedding</h2><p>Banks, government sites and security organisations actively block being shown inside other pages. This is a protection on their end.</p><p>You can still browse privately via Tor — a direct connection through Eirene.</p><button class="btn tor" onclick=\'window.parent.postMessage({type:\"EIRENE_TOR_OPEN\",url:\"'+url+'\"}, \"*\")\'>🧅 Open via Tor</button><button class="btn" onclick=\'window.parent.postMessage({type:\"EIRENE_NAV\",url:\"'+url+'\"}, \"*\")\'>Try again</button></body></html>';
+      loadBlobInFrame(blocked_html);
+      stopLoading();
     }
 
     function injectTokenIntoLinks() {
@@ -730,6 +747,11 @@
     });
 
     navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data.type === 'EIRENE_TOR_OPEN') {
+        fetch(`${window.location.origin}/tor/enable`, {method:'POST', headers: authHeaders()})
+          .then(() => { setTorUiState(true); navigate(event.data.url); })
+          .catch(() => navigate(event.data.url));
+      }
       if (event.data.type === 'SESSION_ENDED') {
         token = null; torMode = false;
         showAuthScreen();
