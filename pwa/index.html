@@ -726,6 +726,11 @@
     });
 
     window.addEventListener('message', event => {
+      if (event.data && event.data.type === 'EIRENE_TOR_OPEN') {
+        fetch(`${window.location.origin}/tor/enable`, {method:'POST', headers: authHeaders()})
+          .then(() => { setTorUiState(true); navigate(event.data.url); })
+          .catch(() => navigate(event.data.url));
+      }
       if (event.data && event.data.type === 'EIRENE_NAV') {
         const url = event.data.url;
         if (url && token) navigate(url);  // url already decoded by postMessage sender
