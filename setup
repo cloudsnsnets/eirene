@@ -174,7 +174,6 @@ sed -i "s|CLOUDFLARE_TUNNEL_TOKEN=.*|CLOUDFLARE_TUNNEL_TOKEN=$TUNNEL_TOKEN|" .en
 sed -i "s|CF_API_TOKEN=.*|CF_API_TOKEN=$CF_API_TOKEN|" .env
 sed -i "s|CF_ZONE_ID=.*|CF_ZONE_ID=$ZONE_ID|" .env
 sed -i "s|CF_TUNNEL_ID=.*|CF_TUNNEL_ID=$TUNNEL_ID|" .env
-sed -i "s|CF_ACCOUNT_ID=.*|CF_ACCOUNT_ID=$ACCOUNT_ID|" .env
 sed -i "s|DOMAIN=.*|DOMAIN=$DOMAIN|" .env
 
 echo -e "${GREEN}✓ JWT secret generated${NC}"
@@ -190,11 +189,6 @@ echo ""
 
 # ── 5. Pull images ────────────────────────────────────────────────────────────
 echo -e "${CYAN}[5/6] Pulling Eirene images...${NC}"
-
-# Login to ghcr if token provided
-if [ -n "$GHCR_TOKEN" ]; then
-    echo "$GHCR_TOKEN" | docker login ghcr.io -u eirene --password-stdin > /dev/null 2>&1
-fi
 
 docker compose pull || die "Failed to pull images. Check your internet connection."
 echo -e "${GREEN}✓ Images ready${NC}"
