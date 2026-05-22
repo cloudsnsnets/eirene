@@ -33,8 +33,8 @@ if errorlevel 1 (
 )
 
 :: Check for Ubuntu WSL distro, install if missing
-wsl -d Ubuntu --exec echo "ok" >nul 2>&1
-if errorlevel 1 (
+wsl -d Ubuntu --exec echo ok 2>nul | findstr /c:"ok" >nul
+if not %errorlevel% == 0 (
     echo   Ubuntu not found. Installing...
     echo.
     wsl --install -d Ubuntu --no-launch
