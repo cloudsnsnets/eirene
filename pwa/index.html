@@ -412,6 +412,10 @@
         const resp = await fetch(browseUrl, { headers: authHeaders() });
         if (!resp.ok) { showBrowseError(url, resp.status); return null; }
         const finalUrl = resp.headers.get('X-Eirene-Final-URL') || url;
+        if (resp.headers.get('X-Eirene-Soft-Expired') === '1') {
+          statusUrl.textContent = '⚠️ Session expiring soon — re-authenticate';
+          setTimeout(() => { statusUrl.textContent = finalUrl; }, 5000);
+        }
         loadBlobInFrame(await resp.text());
         addressBar.value = finalUrl;
         statusUrl.textContent = finalUrl;
