@@ -32,8 +32,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: Run setup in WSL
-wsl bash -c "curl -sSL https://eirene.run.place/setup | bash"
+:: Check for Ubuntu WSL distro, install if missing
+wsl -d Ubuntu --exec echo "ok" >nul 2>&1
+if errorlevel 1 (
+    echo   Ubuntu not found. Installing...
+    echo.
+    wsl --install -d Ubuntu --no-launch
+    echo.
+    echo   Ubuntu installed.
+    echo   Please restart your computer and run this installer again.
+    echo.
+    pause
+    exit /b 0
+)
+
+:: Run setup in Ubuntu
+wsl -d Ubuntu bash -c "curl -sSL https://eirene.run.place/setup | bash"
 
 echo.
 pause
