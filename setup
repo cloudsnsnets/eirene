@@ -28,8 +28,15 @@ die() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 # ── 1. Check Docker ───────────────────────────────────────────────────────────
 echo -e "${CYAN}[1/6] Checking Docker...${NC}"
 
-command -v docker > /dev/null 2>&1 || \
-    die "Docker not found. Install from https://docs.docker.com/get-docker/"
+if ! command -v docker > /dev/null 2>&1; then
+    echo -e "  Installing Docker..."
+    export DEBIAN_FRONTEND=noninteractive
+    curl -fsSL https://get.docker.com | sh > /dev/null 2>&1
+    sudo usermod -aG docker $USER
+    echo -e "${GREEN}✓ Docker installed${NC}"
+    exec sg docker "bash $0"
+fi
+command -v docker > /dev/null 2>&1 ||     die "Docker install failed. Try: curl -fsSL https://get.docker.com | sh"
 
 docker compose version > /dev/null 2>&1 || \
     die "Docker Compose not found. Install Docker Compose plugin."
