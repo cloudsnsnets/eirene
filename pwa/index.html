@@ -403,36 +403,36 @@
       browserWelcome.classList.add('hidden');
     }
 
+    async function fetchAndRender(url) {
+      // Fetch and render url -- does NOT touch history stack
+      addressBar.value = url;
+      startLoading();
+      try {
+        const browseUrl = `${BROWSE_URL}?url=${encodeURIComponent(url)}`;
+        const resp = await fetch(browseUrl, { headers: authHeaders() });
+        if (!resp.ok) { showBrowseError(url, resp.status); return null; }
+        const finalUrl = resp.headers.get('X-Eirene-Final-URL') || url;
+        loadBlobInFrame(await resp.text());
+        addressBar.value = finalUrl;
+        statusUrl.textContent = finalUrl;
+        return finalUrl;
+      } catch (e) {
+        showBrowseError(url, 0);
+        return null;
+      } finally {
+        stopLoading();
+      }
+    }
+
     async function navigate(url) {
       url = url || addressBar.value.trim();
       if (!url) return;
       if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
-
-      addressBar.value = url;
-      startLoading();
-
-      try {
-        const browseUrl = `${BROWSE_URL}?url=${encodeURIComponent(url)}`;
-        const resp = await fetch(browseUrl, {
-          headers: authHeaders()
-        });
-
-        if (!resp.ok) { showBrowseError(url, resp.status); return; }
-
-        const finalUrl = resp.headers.get('X-Eirene-Final-URL') || url;
-        loadBlobInFrame(await resp.text());
-
-        addressBar.value = finalUrl;
-        statusUrl.textContent = finalUrl;
-
+      const finalUrl = await fetchAndRender(url);
+      if (finalUrl) {
         history = history.slice(0, historyIdx + 1);
         history.push(finalUrl);
         historyIdx = history.length - 1;
-
-      } catch (e) {
-        showBrowseError(url, 0);
-      } finally {
-        stopLoading();
       }
     }
 
@@ -504,15 +504,15 @@
     }
 
     function browserBack() {
-      if (historyIdx > 0) { historyIdx--; navigate(history[historyIdx]); }
+      if (historyIdx > 0) { historyIdx--; fetchAndRender(history[historyIdx]); }
     }
 
     function browserForward() {
-      if (historyIdx < history.length - 1) { historyIdx++; navigate(history[historyIdx]); }
+      if (historyIdx < history.length - 1) { historyIdx++; fetchAndRender(history[historyIdx]); }
     }
 
     function browserReload() {
-      if (history[historyIdx]) navigate(history[historyIdx]);
+      if (history[historyIdx]) fetchAndRender(history[historyIdx]);
     }
 
     function lockSession() {
