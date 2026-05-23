@@ -268,11 +268,34 @@
 
       <button id="nav-go" onclick="navigate()">Go</button>
       <span id="tor-indicator" onclick="handleTorToggle()" title="Toggle Tor">🧅</span>
+      <button id="admin-btn" onclick="showAdminPanel()" style="display:none;font-size:0.7rem;padding:0.3rem 0.6rem;border:1px solid #333;background:transparent;color:#555;cursor:pointer;border-radius:4px;" title="Admin">⚙️</button>
       <button id="auth-btn" onclick="lockSession()">🔓 Lock</button>
     </div>
 
     <!-- Loading bar -->
     <div id="loading-bar"></div>
+    <!-- Admin Panel -->
+    <div id="admin-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:200;flex-direction:column;align-items:center;justify-content:flex-start;gap:1rem;padding:2rem;overflow-y:auto;">
+      <div style="font-size:0.7rem;letter-spacing:0.3em;color:#555;text-transform:uppercase;margin-top:1rem;">Admin Panel</div>
+      <div id="admin-users-list" style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0.5rem;"></div>
+      <div style="border-top:1px solid #222;width:100%;max-width:320px;padding-top:1rem;display:flex;flex-direction:column;gap:0.75rem;">
+        <div style="font-size:0.7rem;color:#555;letter-spacing:0.1em;text-transform:uppercase;">Enroll new user</div>
+        <input type="text" id="admin-nickname" placeholder="nickname (e.g. Mum)"
+          style="background:transparent;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;text-align:center;width:100%;outline:none;">
+        <select id="admin-role" style="background:#111;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;width:100%;outline:none;">
+          <option value="family">family</option>
+          <option value="kids">kids</option>
+          <option value="admin">admin</option>
+        </select>
+        <button class="btn" onclick="generateOTP()" style="width:100%;">Generate OTP</button>
+        <div id="admin-otp-display" style="display:none;text-align:center;padding:1rem;border:1px solid #333;border-radius:8px;">
+          <div style="font-size:0.65rem;color:#555;margin-bottom:0.5rem;">One-time PIN — 10 minutes, one use only</div>
+          <div id="admin-otp-pin" style="font-size:2.5rem;letter-spacing:0.5em;color:#c8b89a;font-weight:300;"></div>
+          <div id="admin-otp-for" style="font-size:0.65rem;color:#555;margin-top:0.25rem;"></div>
+        </div>
+      </div>
+      <button class="btn" onclick="hideAdminPanel()" style="width:100%;max-width:320px;">Close</button>
+    </div>
 
     <!-- Welcome / iframe -->
     <div id="browser-welcome">
@@ -597,11 +620,77 @@
       } catch(e) { setMessage("Error. Try again.", "error"); }
     }
 
+    async function showAdminPanel() {
+      document.getElementById("admin-panel").style.display = "flex";
+      document.getElementById("admin-otp-display").style.display = "none";
+      // Load users
+      try {
+        const resp = await fetch(VOICE_AUTH_URL + "/admin/users", {
+          headers: authHeaders()
+        });
+        const data = await resp.json();
+        const list = document.getElementById("admin-users-list");
+        list.innerHTML = "";
+        if (data.users && data.users.length) {
+          data.users.forEach(u => {
+            const row = document.createElement("div");
+            row.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:0.5rem;border:1px solid #222;border-radius:4px;";
+            row.innerHTML = `<span style="color:#e0e0e0;font-size:0.8rem;">${u.nickname}</span>`
+              + `<span style="color:#555;font-size:0.7rem;">${u.role}</span>`
+              + (u.role !== "admin" ? `<button onclick="revokeUser('${u.id}','${u.nickname}')" `
+              + `style="font-size:0.65rem;padding:0.2rem 0.5rem;border:1px solid #333;background:transparent;color:#555;cursor:pointer;border-radius:4px;">Revoke</button>` : "<span></span>");
+            list.appendChild(row);
+          });
+        } else {
+          list.innerHTML = "<div style='color:#555;font-size:0.75rem;text-align:center;'>No users enrolled.</div>";
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    function hideAdminPanel() {
+      document.getElementById("admin-panel").style.display = "none";
+    }
+
+    async function generateOTP() {
+      const nickname = document.getElementById("admin-nickname").value.trim();
+      const role     = document.getElementById("admin-role").value;
+      if (!nickname) { alert("Enter a nickname first."); return; }
+      try {
+        const resp = await fetch(VOICE_AUTH_URL + "/admin/otp", {
+          method: "POST",
+          headers: Object.assign({"Content-Type": "application/json"}, authHeaders()),
+          body: JSON.stringify({ nickname, role })
+        });
+        const data = await resp.json();
+        if (data.status === "ok") {
+          document.getElementById("admin-otp-pin").textContent = data.pin;
+          document.getElementById("admin-otp-for").textContent = nickname + " · " + role + " · expires in 10 min";
+          document.getElementById("admin-otp-display").style.display = "block";
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    async function revokeUser(uid, nickname) {
+      if (!confirm("Revoke " + nickname + "? This cannot be undone.")) return;
+      try {
+        const resp = await fetch(VOICE_AUTH_URL + "/admin/users/" + uid, {
+          method: "DELETE", headers: authHeaders()
+        });
+        const data = await resp.json();
+        if (data.status === "ok") showAdminPanel();
+      } catch(e) { console.error(e); }
+    }
+
     function applyPermissionsUI() {
       // Tor button — hide for non-tor users
       const torBtn = document.getElementById('tor-indicator');
       if (torBtn) {
         torBtn.style.display = userPermissions.tor === false ? 'none' : '';
+      }
+      // Show admin button only for admin role
+      const adminBtn = document.getElementById('admin-btn');
+      if (adminBtn) {
+        adminBtn.style.display = userPermissions.enroll === true ? '' : 'none';
       }
       // Show nickname in status bar
       const sbUser = document.getElementById('sb-user');
