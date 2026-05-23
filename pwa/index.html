@@ -412,7 +412,15 @@
       try {
         const browseUrl = `${BROWSE_URL}?url=${encodeURIComponent(url)}`;
         const resp = await fetch(browseUrl, { headers: authHeaders() });
-        if (!resp.ok) { showBrowseError(url, resp.status); return null; }
+        if (!resp.ok) {
+          if (resp.status === 403) {
+            const body = await resp.text();
+            if (body && body.includes("Ask Mum or Dad")) {
+              loadBlobInFrame(body); stopLoading(); return null;
+            }
+          }
+          showBrowseError(url, resp.status); return null;
+        }
         const finalUrl = resp.headers.get('X-Eirene-Final-URL') || url;
         if (resp.headers.get('X-Eirene-Soft-Expired') === '1') {
           statusUrl.textContent = '⚠️ Session expiring soon — re-authenticate';
