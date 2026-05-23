@@ -273,7 +273,7 @@
     <!-- Status bar -->
     <div id="status-bar">
       <div class="s-dot green" id="sb-tunnel"></div>
-      <span id="sb-mode">standard</span>
+      <span id="sb-mode">standard</span> · <span id="sb-user" style="color:#555;font-size:0.65rem;letter-spacing:0.05em;"></span>
       <span id="status-url"></span>
     </div>
 
@@ -313,8 +313,10 @@
     const authHeaders = () => ({ 'X-Eirene-Auth': `Bearer ${token}` });
 
     // -- State ----------------------------------------------------------------
-    let token       = null;
-    let recording   = false;
+    let token           = null;
+    let recording       = false;
+    let userNickname    = null;
+    let userPermissions = {};
     let enrollCount = 0;
     let enrollMode  = false;
     let torMode       = false;
@@ -524,6 +526,17 @@
       showAuthScreen();
     }
 
+    function applyPermissionsUI() {
+      // Tor button — hide for non-tor users
+      const torBtn = document.getElementById('tor-indicator');
+      if (torBtn) {
+        torBtn.style.display = userPermissions.tor === false ? 'none' : '';
+      }
+      // Show nickname in status bar
+      const sbUser = document.getElementById('sb-user');
+      if (sbUser && userNickname) sbUser.textContent = userNickname;
+    }
+
     function showBrowserScreen() {
       authScreen.classList.add('hidden');
       browserScreen.classList.add('visible');
@@ -677,14 +690,24 @@
         const data = await response.json();
         if (data.status === 'verified') {
           token = data.token;
+          // Extract nickname + permissions from JWT payload
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userNickname    = payload.nickname || null;
+            userPermissions = payload.permissions || {};
+          } catch(e) { userPermissions = {}; }
           try {
             const reg = await navigator.serviceWorker.ready;
             if (reg.active) reg.active.postMessage({ type: 'SET_TOKEN', token });
           } catch(e) {}
-          setRing('open'); setMessage('Tunnel open.', 'success');
+          // Apply role-based UI
+          applyPermissionsUI();
+          // Welcome message
+          const greeting = userNickname ? `Welcome, ${userNickname}.` : 'Tunnel open.';
+          setRing('open'); setMessage(greeting, 'success');
           ringIcon.textContent = '🔓';
           setTunnelStatus(true);
-          setTimeout(() => showBrowserScreen(), 800);
+          setTimeout(() => showBrowserScreen(), 1200);
         } else if (data.status === 'not_recognised') {
           setRing('error'); setMessage('Not recognised. Try again.', 'error');
           setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
@@ -762,7 +785,7 @@
           .catch(() => navigate(event.data.url));
       }
       if (event.data.type === 'SESSION_ENDED') {
-        token = null; torMode = false;
+        token = null; torMode = false; userNickname = null; userPermissions = {};
         showAuthScreen();
         console.log('[eirene] Session ended. Re-authentication required.');
       }
