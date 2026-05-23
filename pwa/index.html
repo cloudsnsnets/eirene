@@ -792,9 +792,7 @@
             setRing('error');
             setMessage('Not recognised. Try again. (' + authFailCount + '/3)', 'error');
             setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🏙️'; }, 2500);
-          } else {
-          setRing('error'); setMessage('Auth error. Try again.', 'error');
-          setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
+          }
         }
       } catch (e) {
         setRing('error'); setMessage('Something went wrong.', 'error');
