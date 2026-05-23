@@ -240,6 +240,15 @@
       <span>noise</span>
     </div>
 
+    <div id="sore-throat-modal" style="display:none;flex-direction:column;align-items:center;gap:1rem;margin-top:1rem;">
+      <div style="font-size:0.8rem;color:#a569bd;letter-spacing:0.1em;text-transform:uppercase;">Voice not working?</div>
+      <input type="text" id="st-nickname" placeholder="your nickname"
+        style="background:transparent;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;letter-spacing:0.1em;text-align:center;width:180px;outline:none;">
+      <input type="password" id="st-pin" placeholder="household PIN"
+        style="background:transparent;border:1px solid #333;color:#aaa;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;letter-spacing:0.1em;text-align:center;width:180px;outline:none;">
+      <button class="btn" onclick="submitSoreThroatPin()" style="border-color:#7d3c98;color:#a569bd;">Enter</button>
+      <button class="btn" onclick="hideSoreThroatPin()">Cancel</button>
+    </div>
     <a style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);font-size:0.65rem;color:#222;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;text-decoration:none;" id="setup-link" onclick="enterEnroll()">setup</a>
     <div style="position:fixed;bottom:1.5rem;left:1.5rem;font-size:0.6rem;color:#222;letter-spacing:0.05em;">εἰρήνη</div>
   </div>
@@ -319,6 +328,7 @@
     let recording       = false;
     let userNickname    = null;
     let userPermissions = {};
+    let authFailCount   = 0;
     let enrollCount = 0;
     let enrollMode  = false;
     let torMode       = false;
@@ -536,6 +546,57 @@
       showAuthScreen();
     }
 
+    function showSoreThroatPin() {
+      document.getElementById("sore-throat-modal").style.display = "flex";
+      setRing("idle");
+      setMessage("Enter your PIN to continue.", "enroll");
+    }
+
+    function hideSoreThroatPin() {
+      document.getElementById("sore-throat-modal").style.display = "none";
+      authFailCount = 0;
+      setRing("idle");
+      setMessage("Tap to authenticate");
+      ringIcon.textContent = "🏙️";
+    }
+
+    async function submitSoreThroatPin() {
+      const nickname = document.getElementById("st-nickname").value.trim();
+      const pin      = document.getElementById("st-pin").value.trim();
+      if (!nickname || !pin) { setMessage("Enter nickname and PIN.", "warning"); return; }
+      try {
+        const resp = await fetch(VOICE_AUTH_URL + "/sore-throat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin, nickname })
+        });
+        const data = await resp.json();
+        if (data.status === "verified") {
+          token = data.token;
+          userNickname = data.nickname;
+          try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            userPermissions = payload.permissions || {};
+          } catch(e) { userPermissions = {}; }
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            if (reg.active) reg.active.postMessage({ type: "SET_TOKEN", token });
+          } catch(e) {}
+          hideSoreThroatPin();
+          applyPermissionsUI();
+          setRing("open");
+          setMessage("Welcome, " + userNickname + ". (PIN session — 1 hour)", "success");
+          ringIcon.textContent = "🔓";
+          setTunnelStatus(true);
+          authFailCount = 0;
+          setTimeout(() => showBrowserScreen(), 1500);
+        } else {
+          setMessage("Invalid PIN. Try again.", "error");
+          document.getElementById("st-pin").value = "";
+        }
+      } catch(e) { setMessage("Error. Try again.", "error"); }
+    }
+
     function applyPermissionsUI() {
       // Tor button — hide for non-tor users
       const torBtn = document.getElementById('tor-indicator');
@@ -712,6 +773,7 @@
             const reg = await navigator.serviceWorker.ready;
             if (reg.active) reg.active.postMessage({ type: 'SET_TOKEN', token });
           } catch(e) {}
+          authFailCount = 0;
           // Apply role-based UI
           applyPermissionsUI();
           // Welcome message
@@ -721,9 +783,16 @@
           setTunnelStatus(true);
           setTimeout(() => showBrowserScreen(), 1200);
         } else if (data.status === 'not_recognised') {
-          setRing('error'); setMessage('Not recognised. Try again.', 'error');
-          setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
-        } else {
+          authFailCount++;
+          if (authFailCount >= 3) {
+            setRing('error');
+            setMessage('Voice not recognised 3 times. Try your PIN?', 'error');
+            setTimeout(() => showSoreThroatPin(), 1500);
+          } else {
+            setRing('error');
+            setMessage('Not recognised. Try again. (' + authFailCount + '/3)', 'error');
+            setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🏙️'; }, 2500);
+          } else {
           setRing('error'); setMessage('Auth error. Try again.', 'error');
           setTimeout(() => { setRing('idle'); setMessage('Tap to authenticate'); ringIcon.textContent = '🎙️'; }, 2500);
         }
