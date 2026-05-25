@@ -637,6 +637,26 @@
     0%, 100% { opacity: 0.2; }
     50%       { opacity: 0.8; }
   }
+  /* FAMILY SECTION */
+  .family { padding: 5rem 1.5rem; }
+  .family-inner { max-width: 860px; margin: 0 auto; }
+  .family-intro { color: var(--muted); font-size: 1.05rem; line-height: 1.8; margin-bottom: 2.5rem; }
+  .family-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
+  @media (max-width: 600px) { .family-grid { grid-template-columns: 1fr; } }
+  .family-card { border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1.5rem; }
+  .family-role { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; }
+  .family-desc { color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+  .family-otp { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 2rem; }
+  .family-otp-label { font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 1rem; }
+  .family-otp p { color: var(--muted); font-size: 0.9rem; line-height: 1.7; margin-bottom: 0.75rem; }
+  .family-otp-sub { font-style: italic; }
+  /* LAN SECTION */
+  .lan { padding: 5rem 1.5rem; background: rgba(255,255,255,0.02); }
+  .lan-inner { max-width: 860px; margin: 0 auto; }
+  .lan-card { border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 2.5rem; }
+  .lan-content h3 { font-size: 1.5rem; font-weight: 300; margin-bottom: 1.25rem; }
+  .lan-content p { color: var(--muted); font-size: 0.95rem; line-height: 1.8; margin-bottom: 1rem; }
+  .lan-quote { border-left: 2px solid var(--accent); padding-left: 1.25rem; margin: 1.5rem 0; color: var(--muted); font-style: italic; font-size: 0.9rem; line-height: 1.8; }
 </style>
 </head>
 <body>
@@ -767,6 +787,50 @@
   </div>
 </section>
 
+<!-- FAMILY -->
+<section class="family">
+  <div class="family-inner">
+    <p class="section-label">Built for families</p>
+    <p class="family-intro">Eirene knows who is home. Every family member has their own voice, their own session, their own permissions. No usernames. No passwords. Just speak.</p>
+    <div class="family-grid">
+      <div class="family-card">
+        <p class="family-role">Admin</p>
+        <p class="family-desc">Full access. Manages the family. Generates one-time PINs to enroll new members. The only one who can enable Tor.</p>
+      </div>
+      <div class="family-card">
+        <p class="family-role">Family</p>
+        <p class="family-desc">Full internet access. Can reach home devices remotely. No Tor mode.</p>
+      </div>
+      <div class="family-card">
+        <p class="family-role">Kids</p>
+        <p class="family-desc">Internet access with restricted content. No Tor. No access to home devices. A fence around the garden, not a prison.</p>
+      </div>
+    </div>
+    <div class="family-otp">
+      <div class="family-otp-label">Adding a family member</div>
+      <p>Admin generates a 6-digit PIN. Shares it by phone. New member taps setup, enters their nickname and PIN, records their passphrase three times. Done. The PIN expires in ten minutes and can only be used once.</p>
+      <p class="family-otp-sub">Lost your voice? Three failed attempts shows a household PIN fallback. One hour session. Re-enroll when recovered.</p>
+    </div>
+  </div>
+</section>
+<!-- LAN -->
+<section class="lan">
+  <div class="lan-inner">
+    <p class="section-label">Your home. From anywhere.</p>
+    <div class="lan-card">
+      <div class="lan-content">
+        <h3>LAN management</h3>
+        <p>Eirene runs on your home network. Which means it can reach everything on it.</p>
+        <p>Open Eirene from anywhere in the world. Type your NAS address, your router, your Home Assistant. Browse it privately, voice authenticated, no VPN, no port forwarding, no exposed services.</p>
+        <div class="lan-quote">
+          "Need to check the security cam? Adjust the thermostat? Restart the NAS after a glitch? Do it all through Eirene — no open holes in your firewall. No botnets sniffing around your smart home."
+        </div>
+        <p>Just you, your voice, your PIN and a quiet tunnel home.</p>
+        <p>That is not remote access. That is safe access.</p>
+      </div>
+    </div>
+  </div>
+</section>
 <!-- REQUIREMENTS -->
 <section class="reqs">
   <div class="reqs-inner">
